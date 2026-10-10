@@ -40,39 +40,28 @@ jobs:
           npx cap add android
           npx cap sync android
 
-      - name: Icons banao
+      - name: Kitfy icon lagao
         run: |
-          echo "Repo ki PNG files:"
-          find . -path ./node_modules -prune -o -iname '*.png' -print
-          LIME=$(find . -path ./node_modules -prune -o -path ./android -prune -o -iname '*lime*.png' -print | head -n1)
-          FG=$(find . -path ./node_modules -prune -o -path ./android -prune -o -iname '*foreground*.png' -print | head -n1)
+          sudo apt-get install -y imagemagick
+          LIME=$(find Assets assets -iname '*lime*.png' 2>/dev/null | head -n1)
           if [ -z "$LIME" ]; then
             echo "ERROR: lime icon PNG nahi mila"
+            find . -iname '*.png' -not -path './node_modules/*' -not -path './android/*'
             exit 1
           fi
-          if [ -z "$FG" ]; then FG="$LIME"; fi
-          echo "Icon: $LIME"
-          echo "Foreground: $FG"
-          mkdir -p icon-src
-          cp "$LIME" icon-src/icon-only.png
-          cp "$FG" icon-src/icon-foreground.png
-          npm install @capacitor/assets@3
-          npx capacitor-assets generate --android --assetPath icon-src --iconBackgroundColor '#C8F135' --iconBackgroundColorDark '#C8F135'
-            - name: Icon background theek karo
-        run: |
+          echo "Icon use ho raha hai: $LIME"
           RES=android/app/src/main/res
-          ls $RES/mipmap-anydpi-v26 || true
-          for f in $RES/mipmap-anydpi-v26/ic_launcher.xml $RES/mipmap-anydpi-v26/ic_launcher_round.xml; do
-            [ -f "$f" ] && sed -i 's#@mipmap/ic_launcher_background#@color/ic_launcher_background#g' "$f"
+          rm -rf $RES/mipmap-anydpi-v26
+          for pair in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
+            D=${pair%%:*}
+            S=${pair##*:}
+            mkdir -p $RES/mipmap-$D
+            convert "$LIME" -resize ${S}x${S} $RES/mipmap-$D/ic_launcher.png
+            cp $RES/mipmap-$D/ic_launcher.png $RES/mipmap-$D/ic_launcher_round.png
+            rm -f $RES/mipmap-$D/ic_launcher_foreground.png
           done
-          mkdir -p $RES/values
-          cat > $RES/values/ic_launcher_background.xml <<'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <resources>
-              <color name="ic_launcher_background">#C8F135</color>
-          </resources>
-          EOF
-          cat $RES/mipmap-anydpi-v26/ic_launcher.xml
+          ls -R $RES | grep -i launcher
+
       - name: Debug APK build karo
         working-directory: android
         run: |
