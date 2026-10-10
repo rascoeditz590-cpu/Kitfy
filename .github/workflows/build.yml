@@ -58,7 +58,21 @@ jobs:
           cp "$FG" icon-src/icon-foreground.png
           npm install @capacitor/assets@3
           npx capacitor-assets generate --android --assetPath icon-src --iconBackgroundColor '#C8F135' --iconBackgroundColorDark '#C8F135'
-
+            - name: Icon background theek karo
+        run: |
+          RES=android/app/src/main/res
+          ls $RES/mipmap-anydpi-v26 || true
+          for f in $RES/mipmap-anydpi-v26/ic_launcher.xml $RES/mipmap-anydpi-v26/ic_launcher_round.xml; do
+            [ -f "$f" ] && sed -i 's#@mipmap/ic_launcher_background#@color/ic_launcher_background#g' "$f"
+          done
+          mkdir -p $RES/values
+          cat > $RES/values/ic_launcher_background.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <color name="ic_launcher_background">#C8F135</color>
+          </resources>
+          EOF
+          cat $RES/mipmap-anydpi-v26/ic_launcher.xml
       - name: Debug APK build karo
         working-directory: android
         run: |
