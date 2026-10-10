@@ -102,6 +102,7 @@ iframe.prev{width:100%;height:420px;border:0;border-radius:20px;background:#fff}
 @media print{body *{visibility:hidden}#paper,#paper *{visibility:visible}#paper{position:absolute;left:0;top:0;width:100%;border-radius:0}}
 .pw{position:relative;display:flex}.pw input{padding-right:78px}.pwb{position:absolute;right:6px;top:50%;transform:translateY(-50%);height:32px;padding:0 14px;border:0;border-radius:16px;background:var(--surf2);color:var(--mist);font:700 13px 'DM Sans',sans-serif;cursor:pointer}
 .msgs{flex:1;min-height:50dvh;max-height:62dvh;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:4px 0}.msg{max-width:78%;padding:10px 14px;border-radius:18px;background:var(--surf2);align-self:flex-start;word-break:break-word}.msg.me{background:var(--lime);color:var(--ink);align-self:flex-end}.chatbar{position:sticky;bottom:0;background:var(--ink);padding:8px 0}
+.msg a{color:inherit;text-decoration:underline;word-break:break-all}.msg .mt{display:block;font-size:11px;opacity:.7;margin-top:4px}.mdel{border:0;background:none;color:inherit;font:inherit;text-decoration:underline;cursor:pointer;padding:0 0 0 6px}#splash{position:fixed;inset:0;z-index:99;background:#0E0D1A;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;transition:opacity .4s}#splash b{font:800 34px Sora,system-ui,sans-serif;color:#F4F3FF}
 </style>
 </head>
 <body>
@@ -167,7 +168,7 @@ const nav=a=>'<nav class="nav"><button data-a="go" data-r="home" class="'+(a==='
 const fld=(label,key,val,type,ph)=>'<label class="fld"><span>'+label+'</span><input data-i="'+key+'" type="'+(type||'text')+'" value="'+esc(val)+'" placeholder="'+esc(ph||'')+'"></label>';
 
 function guard(R){const st=AUTH.status;
-if(!(R==='auth'||R==='setup'||R==='discover'||R==='me'||R==='profile'||R==='chat'||R==='settings'))return R;
+if(!(R==='auth'||R==='setup'||R==='discover'||R==='me'||R==='profile'||R==='chat'||R==='settings'||R==='inbox'))return R;
 if(st==='loading'||st==='error')return 'wait';
 if(st==='out')return 'auth';
 if(st==='setup')return 'setup';
@@ -176,11 +177,12 @@ if(R==='chat'&&!CHAT)return 'discover';
 return (R==='auth'||R==='setup')?'home':R}
 function render(){
 const R=guard(S.route);if(R!=='me'&&R!=='setup')PF=null;
-const S_={home:homeS,saved:savedS,designer:designerS,invoice:invoiceS,planner:plannerS,hooks:hooksS,brand:brandS,bio:bioS,auth:authS,setup:setupS,me:meS,discover:discoverS,profile:profileS,wait:waitS,chat:chatS,settings:settingsS};
+const S_={home:homeS,saved:savedS,designer:designerS,invoice:invoiceS,planner:plannerS,hooks:hooksS,brand:brandS,bio:bioS,auth:authS,setup:setupS,me:meS,discover:discoverS,profile:profileS,wait:waitS,chat:chatS,settings:settingsS,inbox:inboxS};
 const withNav=R==='home'||R==='saved'||R==='discover'||R==='me';
 $('#app').innerHTML='<div class="scroll">'+S_[R]()+'</div>'+(withNav?nav(R):'');
 if(R==='designer')initDesigner();
 if(R==='bio')bioPreview();
+if(R==='inbox')inboxListen();
 if(R==='chat')chatDraw();else if(CHAT){if(CHAT.un)CHAT.un();CHAT=null}
 if(R==='discover'&&!DS.loaded&&!DS.loading)loadDiscover();
 }
@@ -313,7 +315,7 @@ function snap(w){const t=document.createElement('canvas');const k=w/D.w;t.width=
 /* ---------- firebase: login + marketplace ---------- */
 const FBCFG={apiKey:"AIzaSyCFSG8LLs7PwEijruLYcbL6SCaDKaW8Khs",authDomain:"kitfy-bb397.firebaseapp.com",projectId:"kitfy-bb397",storageBucket:"kitfy-bb397.firebasestorage.app",messagingSenderId:"444929811011",appId:"1:444929811011:web:113dccdd1c18eec56aaaf6"};
 const FBV='10.14.1';
-let CHAT=null,FB=null,fbP=null,PF=null,PF_BUSY=false,VIEW=null;
+let INBOX={items:[],un:null},PC={},CHAT=null,FB=null,fbP=null,PF=null,PF_BUSY=false,VIEW=null;
 const AUTH={status:'loading',user:null,profile:null};
 const AU={mode:'login',email:'',pass:'',busy:false,err:'',show:false};
 const DS={q:'',role:'all',items:[],loaded:false,loading:false,err:''};
@@ -350,11 +352,17 @@ function squarePhoto(file,size,cb){const r=new FileReader();r.onload=()=>{const 
 
 /* chat + settings */
 function chatS(){const p=CHAT.peer;return topBar(esc(p.name))+'<div id="msgs" class="msgs"></div><div class="rowf chatbar"><input class="inp" data-i="chat.text" type="text" maxlength="1000" placeholder="Type a message..." aria-label="Message" value="'+esc(CHAT.text)+'"><button class="btn lime sm" data-a="chat-send">Send</button></div>'}
-function chatDraw(){const el=$('#msgs');if(!el||!CHAT)return;const me=AUTH.user.uid;el.innerHTML=CHAT.msgs.length?CHAT.msgs.map(m=>'<div class="msg '+(m.from===me?'me':'')+'">'+esc(m.text)+'</div>').join(''):'<div class="empty">Say hello to '+esc(CHAT.peer.name)+'.</div>';el.scrollTop=el.scrollHeight;if(!CHAT.un)chatListen()}
-function chatListen(){if(!CHAT||!FB||CHAT.un)return;const c=CHAT;c.un=FB.fs.collection('chats').doc(c.id).collection('messages').orderBy('at','asc').limitToLast(100).onSnapshot(s=>{c.msgs=s.docs.map(d=>d.data());if(CHAT===c)chatDraw()},e=>{c.un=null;toast(e&&e.code==='permission-denied'?'Chat permission denied. Check rules.':'Could not load chat')})}
+function chatDraw(){const el=$('#msgs');if(!el||!CHAT)return;const me=AUTH.user.uid;el.innerHTML=CHAT.msgs.length?CHAT.msgs.map(m=>'<div class="msg '+(m.from===me?'me':'')+'">'+linkify(m.text)+'<small class="mt">'+fmtT(m.at)+(m.from===me?' <button class="mdel" data-a="msg-del" data-id="'+m.id+'" aria-label="Delete message">Delete</button>':'')+'</small></div>').join(''):'<div class="empty">Say hello to '+esc(CHAT.peer.name)+'.</div>';el.scrollTop=el.scrollHeight;if(!CHAT.un)chatListen()}
+function chatListen(){if(!CHAT||!FB||CHAT.un)return;const c=CHAT;c.un=FB.fs.collection('chats').doc(c.id).collection('messages').orderBy('at','asc').limitToLast(100).onSnapshot(s=>{c.msgs=s.docs.map(d=>Object.assign({id:d.id},d.data()));if(CHAT===c)chatDraw()},e=>{c.un=null;toast(e&&e.code==='permission-denied'?'Chat permission denied. Check rules.':'Could not load chat')})}
 async function chatSend(){if(!CHAT||!FB)return;const x=(CHAT.text||'').trim();if(!x)return;const c=CHAT,me=AUTH.user.uid;c.text='';const i=document.querySelector('[data-i="chat.text"]');if(i)i.value='';
 try{const ref=FB.fs.collection('chats').doc(c.id);await ref.set({members:c.id.split('_'),last:x.slice(0,100),updatedAt:FB.ts()},{merge:true});await ref.collection('messages').add({from:me,text:x,at:FB.ts()})}catch(e){c.text=x;if(i)i.value=x;toast('Message not sent. Check your internet.')}}
 function settingsS(){const u=AUTH.user||{},p=AUTH.profile||{};return topBar('Settings')+'<div class="card"><div class="mute">Account</div><b class="sora">'+esc(p.name||'')+'</b><div class="mute">'+esc(u.email||'')+' · '+esc(roleName(p.role))+'</div></div><div class="card"><div class="mute">Notifications</div><div>Push notifications for new messages are not available yet. They need a separate setup and will come in a later update.</div></div><div class="card"><div class="mute">Privacy</div><div>'+NOTE+'</div></div><button class="btn ghost full" data-a="au-out">Logout</button>'}
+
+
+const linkify=x=>esc(x).replace(/(https?:\/\/[^\s<]+)/g,u=>'<a href="#" data-a="url" data-u="'+u+'">'+u+'</a>');
+function fmtT(ts){if(!ts||!ts.toDate)return '';const d=ts.toDate(),n=new Date(),p=v=>String(v).padStart(2,'0');return d.toDateString()===n.toDateString()?p(d.getHours())+':'+p(d.getMinutes()):p(d.getDate())+'/'+p(d.getMonth()+1)}
+function inboxS(){const me=AUTH.user.uid;const l=INBOX.items;return topBar('Chats')+(l.length?l.map(c=>{const p=PC[c.peer]||{name:'Loading...'};return '<button class="pcard" data-a="inbox-open" data-id="'+esc(c.id)+'">'+(PC[c.peer]?avatarH(p,52):'')+'<span class="tx"><b class="sora">'+esc(p.name)+'</b><div class="mute">'+esc(c.last||'')+'</div></span><span class="mute">'+fmtT(c.updatedAt)+'</span></button>'}).join(''):'<div class="empty">No chats yet. Open a profile in Discover and tap Message.</div>')}
+function inboxListen(){if(INBOX.un||!FB||!AUTH.user)return;const me=AUTH.user.uid;INBOX.un=FB.fs.collection('chats').where('members','array-contains',me).onSnapshot(s=>{INBOX.items=s.docs.map(d=>{const x=d.data();return {id:d.id,peer:x.members.find(m=>m!==me),last:x.last,updatedAt:x.updatedAt}}).sort((a,b)=>((b.updatedAt&&b.updatedAt.seconds)||9e9)-((a.updatedAt&&a.updatedAt.seconds)||9e9));INBOX.items.filter(c=>!PC[c.peer]).forEach(c=>{PC[c.peer]=0;FB.fs.collection('users').doc(c.peer).get().then(u=>{PC[c.peer]=u.exists?u.data():{name:'Kitfy user'};if(S.route==='inbox')render()})});if(S.route==='inbox')render()},e=>{INBOX.un=null;toast('Could not load chats. Check rules.')})}
 
 /* auth screens */
 function accH(){const st=AUTH.status;
@@ -401,7 +409,7 @@ const l=DS.items.filter(p=>p.uid!==me).filter(p=>!q||((p.name||'')+' '+(p.city||
 if(!l.length)return '<div class="empty">'+(DS.items.length>1||(DS.items.length===1&&DS.items[0].uid!==me)?'No one found with that name.':'No other profiles yet. Invite a friend to Kitfy!')+'</div>';
 return l.map(p=>'<button class="pcard" data-a="ds-open" data-id="'+esc(p.uid)+'">'+avatarH(p,52)+'<span class="tx"><b class="sora">'+esc(p.name)+'</b><div class="mute">'+esc(roleName(p.role))+(p.city?' · '+esc(p.city):'')+'</div>'+(p.bio?'<div class="bi">'+esc(p.bio)+'</div>':'')+'</span>'+ic(I.chev,18)+'</button>').join('')}
 function discoverS(){
-return '<div class="top"><h2 style="font-size:24px">Discover</h2><button class="icon-btn" data-a="ds-refresh" aria-label="Refresh">'+ic(I.refresh)+'</button></div>'+
+return '<div class="top"><h2 style="font-size:24px">Discover</h2><button class="btn ghost sm" data-a="go" data-r="inbox">Chats</button><button class="icon-btn" data-a="ds-refresh" aria-label="Refresh">'+ic(I.refresh)+'</button></div>'+
 '<label class="search">'+ic(I.search,20)+'<input data-i="ds.q" type="text" placeholder="Name, city or skill..." aria-label="Search profiles" value="'+esc(DS.q)+'"></label>'+
 '<div class="chips">'+[['all','Sab']].concat(ROLES.map(r=>[r[0],r[1]])).map(r=>'<button class="chip '+(DS.role===r[0]?'on':'')+'" data-a="ds-role" data-r="'+r[0]+'">'+r[1]+'</button>').join('')+'</div>'+
 '<div id="dlist" style="display:flex;flex-direction:column;gap:10px">'+dlistH()+'</div>'}
@@ -431,7 +439,9 @@ AU.busy=false;render()},
 async 'au-reset'(){const e=AU.email.trim();if(!okEmail(e)){AU.err='Enter your email above first.';return render()}
 if(!FB){AU.err='Internet required.';fbInit();return render()}
 try{await FB.auth.sendPasswordResetEmail(e);toast('Reset email sent. Also check your Spam folder.')}catch(x){AU.err=authErr(x);render()}},
-'au-out'(){S.route='home';history.replaceState({r:'home'},'');PF=null;if(FB)FB.auth.signOut();toast('Logged out')},
+'inbox-open'(el){const c=INBOX.items.find(x=>x.id===el.dataset.id);const p=c&&PC[c.peer];if(!p)return;CHAT={id:c.id,peer:p,msgs:[],text:'',un:null};go('chat')},
+'msg-del'(el){if(!CHAT||!confirm('Delete this message?'))return;FB.fs.collection('chats').doc(CHAT.id).collection('messages').doc(el.dataset.id).delete().catch(()=>toast('Could not delete'))},
+'au-out'(){if(INBOX.un){INBOX.un();INBOX.un=null}INBOX.items=[];S.route='home';history.replaceState({r:'home'},'');PF=null;if(FB)FB.auth.signOut();toast('Logged out')},
 'au-retry'(){AUTH.status='loading';render();if(FB&&AUTH.user)loadProfile();else fbInit()},
 'pf-role'(el){if(!PF)return;PF.role=el.dataset.r;document.querySelectorAll('.role').forEach(b=>{const on=b===el;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on)})},
 'pf-photo'(){$('#avatarFile').click()},'pf-rmphoto'(){PF.photo='';render()},
@@ -528,6 +538,8 @@ if(el.id==='avatarFile'){squarePhoto(f,200,src=>{if(PF){PF.photo=src;render()}})
 document.addEventListener('keydown',e=>{const k=e.target.dataset&&e.target.dataset.i;if(e.key==='Enter'&&(k==='au.email'||k==='au.pass')){e.preventDefault();A['au-go']()}if(e.key==='Enter'&&k==='chat.text'){e.preventDefault();chatSend()}});
 render();
 fbInit();
+
+(function(){const s=document.createElement('div');s.id='splash';s.innerHTML=logo(96,'#C8F135','#0E0D1A')+'<b>Kitfy</b>';document.body.appendChild(s);setTimeout(()=>{s.style.opacity=0;setTimeout(()=>s.remove(),450)},1100)})();
 </script>
 </body>
 </html>
