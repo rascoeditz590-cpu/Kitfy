@@ -133,6 +133,45 @@ function copyText(x){if(navigator.clipboard&&navigator.clipboard.writeText){navi
 function download(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500)}
 function resizeImage(file,max,cb){const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,max/Math.max(im.width,im.height));const c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);cb(c.toDataURL(file.type==='image/png'?'image/png':'image/jpeg',0.88),c.width,c.height)};im.src=r.result};r.readAsDataURL(file)}
 
+
+function blobToB64(b){return new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result).split(',')[1]);r.onerror=no;r.readAsDataURL(b)})}
+const isNative=()=>{const C=window.Capacitor;return !!(C&&C.isNativePlatform&&C.isNativePlatform()&&C.Plugins&&C.Plugins.Filesystem&&C.Plugins.Share)};
+async function saveFile(blob,name){
+if(isNative()){try{const C=window.Capacitor.Plugins;const r=await C.Filesystem.writeFile({path:name,data:await blobToB64(blob),directory:'CACHE'});await C.Share.share({title:name,files:[r.uri],dialogTitle:'Save ya share karo'})}catch(e){const m=String((e&&e.message)||e);if(!/cancel/i.test(m))toast('Save nahi hua: '+m)}return}
+download(blob,name)}
+async function shareText(t){
+if(isNative()){try{await window.Capacitor.Plugins.Share.share({text:t,dialogTitle:'Bhejo'})}catch(e){}return}
+if(navigator.share){try{await navigator.share({text:t})}catch(e){}return}
+window.open('https://wa.me/?text='+encodeURIComponent(t),'_blank')}
+function makePdf(jpg,w,h){const enc=new TextEncoder(),parts=[],offs=[];let len=0;
+const push=x=>{const b=typeof x==='string'?enc.encode(x):x;parts.push(b);len+=b.length};
+const obj=(n,body)=>{offs[n]=len;push(n+' 0 obj\n'+body+'\nendobj\n')};
+const pw=595,ph=Math.round(595*h/w);
+push('%PDF-1.4\n');
+obj(1,'<< /Type /Catalog /Pages 2 0 R >>');obj(2,'<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+obj(3,'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+pw+' '+ph+'] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>');
+offs[4]=len;push('4 0 obj\n<< /Type /XObject /Subtype /Image /Width '+w+' /Height '+h+' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '+jpg.length+' >>\nstream\n');push(jpg);push('\nendstream\nendobj\n');
+const cs='q '+pw+' 0 0 '+ph+' 0 0 cm /Im0 Do Q';obj(5,'<< /Length '+cs.length+' >>\nstream\n'+cs+'\nendstream');
+const xr=len;let x='xref\n0 6\n0000000000 65535 f \n';for(let i=1;i<=5;i++)x+=String(offs[i]).padStart(10,'0')+' 00000 n \n';
+push(x+'trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n'+xr+'\n%%EOF');return new Blob(parts,{type:'application/pdf'})}
+async function invCanvas(){const v=INV,W=1080,rows=v.items.filter(x=>x.d||x.a);
+try{await Promise.all([document.fonts.load("800 40px Sora"),document.fonts.load("700 40px 'DM Sans'")])}catch(e){}
+const H=640+rows.length*76+(v.upi?70:0)+(v.note?110:0);const c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
+g.fillStyle='#fff';g.fillRect(0,0,W,H);g.textBaseline='top';
+const T=(t,x,y,f,col,al,mw)=>{g.font=f;g.fillStyle=col;g.textAlign=al||'left';mw?g.fillText(t,x,y,mw):g.fillText(t,x,y)};
+const SF="'Sora',system-ui,sans-serif",DF2="'DM Sans',system-ui,sans-serif";
+T('INVOICE',70,70,'800 64px '+SF,'#0E0D1A');T(v.no||'',W-70,90,'700 40px '+DF2,'#5B3FE0','right');
+g.fillStyle='#0E0D1A';g.fillRect(70,170,W-140,4);
+let y=210;T('FROM',70,y,'700 26px '+DF2,'#5A5775');y+=36;T(v.from||'-',70,y,'700 42px '+SF,'#0E0D1A','left',W-140);y+=84;
+T('BILL TO',70,y,'700 26px '+DF2,'#5A5775');y+=36;T(v.client||'-',70,y,'700 42px '+SF,'#0E0D1A','left',W-140);y+=84;
+T('Date: '+v.date,70,y,'500 30px '+DF2,'#5A5775');y+=70;
+rows.forEach(x=>{T(x.d||'Kaam',70,y,'500 36px '+DF2,'#0E0D1A','left',640);T(inr(x.a),W-70,y,'700 36px '+DF2,'#0E0D1A','right');y+=76});
+g.fillStyle='#0E0D1A';g.fillRect(70,y,W-140,4);y+=30;
+T('Total',70,y+10,'700 40px '+DF2,'#0E0D1A');T(inr(invTotal(v)),W-70,y,'800 58px '+SF,'#5B3FE0','right');y+=100;
+if(v.upi){T('UPI: '+v.upi,70,y,'700 34px '+DF2,'#0E0D1A','left',W-140);y+=70}
+if(v.note)T(v.note,70,y,'400 32px '+DF2,'#0E0D1A','left',W-140);
+return c}
+
 /* ---------- state + router ---------- */
 const S={q:'',route:'home',pdate:iso(new Date()),padd:false,pplat:'YouTube',niche:'Fitness',topic:'',hooks:[],caps:[],tags:''};
 const TOOLS=[
@@ -147,7 +186,7 @@ function go(r,push=true){S.route=r;if(push)history.pushState({r:r},'');render()}
 history.replaceState({r:'home'},'');
 window.addEventListener('popstate',e=>{S.route=(e.state&&e.state.r)||'home';render()});
 
-const top=(t,right)=>'<div class="top"><button class="icon-btn" data-a="back" aria-label="Wapas">'+ic(I.back)+'</button><h2>'+t+'</h2>'+(right||'')+'</div>';
+const topbar=(t,right)=>'<div class="top"><button class="icon-btn" data-a="back" aria-label="Wapas">'+ic(I.back)+'</button><h2>'+t+'</h2>'+(right||'')+'</div>';
 const nav=a=>'<nav class="nav"><button data-a="go" data-r="home" class="'+(a==='home'?'on':'')+'">'+ic(I.home,24)+'Home</button><button class="fab" data-a="sheet" aria-label="Naya banao">'+ic(I.plus,26,3)+'</button><button data-a="go" data-r="saved" class="'+(a==='saved'?'on':'')+'">'+ic(I.bookmark,24)+'Saved</button></nav>';
 const fld=(label,key,val,type,ph)=>'<label class="fld"><span>'+label+'</span><input data-i="'+key+'" type="'+(type||'text')+'" value="'+esc(val)+'" placeholder="'+esc(ph||'')+'"></label>';
 
@@ -156,7 +195,7 @@ const R=S.route;const S_={home:homeS,saved:savedS,designer:designerS,invoice:inv
 const withNav=R==='home'||R==='saved';
 $('#app').innerHTML='<div class="scroll">'+S_[R]()+'</div>'+(withNav?nav(R):'');
 if(R==='designer')initDesigner();
-if(R==='bio')bioPreview();
+if(R==='bio')bioPreview(true);
 }
 
 /* ---------- home ---------- */
@@ -169,196 +208,4 @@ function homeS(){return '<div class="top">'+logo(40,'#C8F135','#0E0D1A')+'<h2 st
 
 /* ---------- saved ---------- */
 function savedS(){
-const inv=db.invoices.map(v=>'<div class="row-item"><button class="grow" data-a="inv-open" data-id="'+v.id+'"><b class="sora">'+esc(v.no)+'</b> <span class="mute">'+esc(v.client||'Client')+'</span><div class="mute">'+inr(invTotal(v))+'</div></button><button class="icon-btn sm" data-a="inv-del" data-id="'+v.id+'" aria-label="Invoice hatao">'+ic(I.trash,18)+'</button></div>').join('');
-const th=db.designs.map(d=>'<div class="thumb"><button style="border:0;padding:0;display:block;width:100%;cursor:pointer;background:none" data-a="d-load" data-id="'+d.id+'" aria-label="Design kholo"><img src="'+d.thumb+'" alt="Saved design"></button><button class="icon-btn sm x" data-a="d-del" data-id="'+d.id+'" aria-label="Design hatao">'+ic(I.x,16)+'</button></div>').join('');
-return '<div class="top"><h2 style="font-size:24px">Saved</h2></div>'+
-'<div class="sora" style="font-weight:700">Invoices</div>'+(inv||'<div class="empty">Abhi koi invoice save nahi hua. Invoice tool me banao.</div>')+
-'<div class="sora" style="font-weight:700">Thumbnails</div>'+(th?'<div class="thumbs">'+th+'</div>':'<div class="empty">Abhi koi design save nahi hua. Thumbnail me Save Draft dabao.</div>')}
-
-/* ---------- brand kit ---------- */
-function brandS(){const b=db.brand;
-const FONTS=['Sora','DM Sans','Georgia','Impact'];
-return top('Brand Kit')+
-'<div class="card">'+fld('Brand ka naam','b.name',b.name,'text','Apna naam ya brand')+
-'<div><div class="mute" style="margin-bottom:8px">Colors</div><div class="chips" id="bcols">'+b.colors.map((c,i)=>'<input class="cin" type="color" data-i="b.color" data-n="'+i+'" value="'+c+'" aria-label="Color '+(i+1)+'">').join('')+'</div></div>'+
-'<div class="rowf"><button class="btn ghost sm" data-a="b-addc">+ Color</button><button class="btn ghost sm" data-a="b-rmc">Aakhri hatao</button></div></div>'+
-'<div class="card"><div class="mute">Font</div><div class="chips">'+FONTS.map(f=>'<button class="chip '+(b.font===f?'on':'')+'" data-a="b-font" data-f="'+f+'" style="font-family:'+(f==='Sora'||f==='DM Sans'?"'"+f+"'":f)+'">'+f+'</button>').join('')+'</div></div>'+
-'<div class="card"><div class="mute">Logo</div><div class="rowf">'+(b.logo?'<img class="logoimg" src="'+b.logo+'" alt="Logo">':'<div class="logoimg"></div>')+'<button class="btn ghost sm" data-a="b-logo">Logo chuno</button>'+(b.logo?'<button class="btn ghost sm" data-a="b-rmlogo">Hatao</button>':'')+'</div></div>'+
-'<div class="card" id="bprev">'+brandPrev()+'</div>'}
-function brandPrev(){const b=db.brand;return '<div class="mute">Kit preview</div><div style="font:800 28px '+(b.font==='Sora'||b.font==='DM Sans'?"'"+b.font+"'":b.font)+',system-ui">'+esc(b.name||'Tumhara brand')+'</div><div style="display:flex;height:36px;border-radius:18px;overflow:hidden">'+b.colors.map(c=>'<div style="flex:1;background:'+c+'"></div>').join('')+'</div><div class="mute">Designer me ye colors, font aur logo ek tap me milte hain.</div>'}
-
-/* ---------- invoice ---------- */
-const newInv=()=>({id:uid(),no:'KF-'+String(db.invN+1).padStart(3,'0'),date:iso(new Date()),from:db.brand.name||'',client:'',items:[{d:'',a:''}],upi:'',note:''});
-let INV=null;
-const invTotal=v=>v.items.reduce((s,x)=>s+(parseFloat(x.a)||0),0);
-function itemsH(){return INV.items.map((x,i)=>'<div class="rowf" style="margin-bottom:10px"><input class="inp" style="flex:2" data-i="item.d" data-n="'+i+'" value="'+esc(x.d)+'" placeholder="Kaam ka naam" aria-label="Kaam ka naam"><input class="inp" style="flex:1" data-i="item.a" data-n="'+i+'" value="'+esc(x.a)+'" type="number" inputmode="decimal" placeholder="Rs." aria-label="Amount">'+(INV.items.length>1?'<button class="icon-btn sm" data-a="inv-rm" data-n="'+i+'" aria-label="Item hatao">'+ic(I.x,16)+'</button>':'')+'</div>').join('')}
-function paperH(){const v=INV;return '<div class="ph"><span class="sora big">INVOICE</span><b style="color:#5B3FE0">'+esc(v.no)+'</b></div><div class="rule"></div>'+
-'<div><div class="lbl">FROM</div><div class="sora" style="font-weight:700">'+esc(v.from||'Tumhara naam')+'</div></div><div><div class="lbl">BILL TO</div><div class="sora" style="font-weight:700">'+esc(v.client||'Client ka naam')+'</div></div><div class="lbl">Date: '+esc(v.date)+'</div>'+
-v.items.map(x=>'<div class="li"><span>'+esc(x.d||'Kaam')+'</span><b>'+inr(x.a)+'</b></div>').join('')+
-'<div class="rule"></div><div class="li" style="align-items:center"><b>Total</b><span class="sora tot">'+inr(invTotal(v))+'</span></div>'+(v.upi?'<div class="lbl">UPI: '+esc(v.upi)+'</div>':'')+(v.note?'<div style="font-size:14px">'+esc(v.note)+'</div>':'')}
-function invoiceS(){if(!INV)INV=newInv();const v=INV;
-return top('Invoice')+'<div class="card">'+fld('Tumhara naam / brand','inv.from',v.from)+fld('Client ka naam','inv.client',v.client)+'<div class="row2">'+fld('Invoice no.','inv.no',v.no)+fld('Date','inv.date',v.date,'date')+'</div><div><div class="mute" style="margin-bottom:8px">Items</div><div id="items">'+itemsH()+'</div><button class="btn ghost sm" data-a="inv-add">+ Item jodo</button></div>'+fld('UPI ID (optional)','inv.upi',v.upi,'text','yourname@upi')+fld('Note (optional)','inv.note',v.note)+'</div>'+
-'<div id="paper" class="paper">'+paperH()+'</div>'+
-'<button class="btn lime full" data-a="inv-wa">WhatsApp pe bhejo</button><div class="row2"><button class="btn ghost sm" data-a="inv-upi">UPI link copy</button><button class="btn ghost sm" data-a="inv-pdf">PDF / Print</button></div><button class="btn ghost full" data-a="inv-save">Invoice save karo</button>'}
-
-/* ---------- planner ---------- */
-const ST=['Idea','Script','Shoot','Edit','Ready','Posted'];
-const STC={Idea:['#7B5CFF','#fff'],Script:['#FF6A4D','#0E0D1A'],Shoot:['#C8F135','#0E0D1A'],Edit:['#25223F','#F4F3FF'],Ready:['#F4F3FF','#0E0D1A'],Posted:['transparent','#A9A6C8']};
-const PLAT=['YouTube','Reel','Shorts','Post','Other'];
-const DN=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-function weekDays(){const d=parseISO(S.pdate);const s=new Date(d);s.setDate(d.getDate()-((d.getDay()+6)%7));return Array.from({length:7},(_,i)=>{const x=new Date(s);x.setDate(s.getDate()+i);return x})}
-function plansH(){const l=db.plans.filter(p=>p.date===S.pdate).sort((a,b)=>(a.time||'99').localeCompare(b.time||'99'));
-if(!l.length)return '<div class="empty">Is din kuch plan nahi hai. Idea jodo se shuru karo.</div>';
-return l.map(p=>{const c=STC[p.status]||STC.Idea;return '<div class="plan"><div class="rowf" style="justify-content:space-between"><span class="tag" style="background:var(--surf2)">'+esc(p.platform)+'</span><span class="mute">'+esc(p.time||'')+'</span></div><div class="sora" style="font-weight:700;font-size:16px">'+esc(p.title)+'</div><div class="rowf" style="justify-content:space-between"><button class="tag" data-a="p-st" data-id="'+p.id+'" style="background:'+c[0]+';color:'+c[1]+';cursor:pointer;'+(p.status==='Posted'?'border:1px solid #39355C':'')+';min-height:34px" aria-label="Status badlo">'+p.status+'</button><button class="icon-btn sm" data-a="p-del" data-id="'+p.id+'" aria-label="Plan hatao">'+ic(I.trash,18)+'</button></div></div>'}).join('')}
-function plannerS(){const days=weekDays();const dt=parseISO(S.pdate);
-return top('Planner','<div class="mute" style="font-weight:700">'+dt.toLocaleString('en',{month:'short',year:'numeric'})+'</div>')+
-'<div class="rowf"><button class="icon-btn" data-a="p-wk" data-d="-7" aria-label="Pichla hafta">'+ic(I.left)+'</button><div class="days" style="flex:1">'+days.map((d,i)=>{const k=iso(d);return '<button class="day '+(k===S.pdate?'on':'')+'" data-a="p-day" data-d="'+k+'"><span>'+DN[i]+'</span><b>'+d.getDate()+'</b><i class="dot '+(db.plans.some(p=>p.date===k)?'':'off')+'"></i></button>'}).join('')+'</div><button class="icon-btn" data-a="p-wk" data-d="7" aria-label="Agla hafta">'+ic(I.chev)+'</button></div>'+
-'<div class="sora" style="font-weight:700;font-size:18px">'+(S.pdate===iso(new Date())?'Aaj ka plan':dt.toLocaleDateString('en',{weekday:'long',day:'numeric',month:'short'}))+'</div><div id="plist" style="display:flex;flex-direction:column;gap:12px">'+plansH()+'</div>'+
-(S.padd?'<div class="card">'+fld('Idea ka title','p.title','','text','Kya banana hai?')+'<div class="chips">'+PLAT.map(p=>'<button class="chip '+(S.pplat===p?'on':'')+'" data-a="p-plat" data-p="'+p+'">'+p+'</button>').join('')+'</div>'+fld('Time (optional)','p.time','','time')+'<div class="row2"><button class="btn ghost sm" data-a="p-cancel">Cancel</button><button class="btn lime sm" data-a="p-add">Add karo</button></div></div>':'<button class="btn lime full" data-a="p-new">'+ic(I.plus,18,3)+' Idea jodo</button>')}
-
-/* ---------- hooks ---------- */
-const HOOKS=['{t} ke baare me ye baat koi nahi batata.','Agar tum {t} kar rahe ho, to ye galti mat karna.','{t} sikhna hai? Bas 30 second do.','Maine 30 din {t} try kiya. Ye hua.','{t} ka sabse bada jhooth ye hai.','Ruko! {t} shuru karne se pehle ye dekh lo.','{t} me 90% log yahin atak jaate hain.','Ye 3 cheezein {t} ko aasaan bana deti hain.','Kaash mujhe {t} ke baare me ye pehle pata hota.','{t} ka ek trick jo mere kaam aaya.','Beginners ke liye {t}: bas itna karo.','{t} par log paise barbaad kar rahe hain. Aise bachao.','Kya {t} sach me kaam karta hai? Maine test kiya.','{t}: pehle vs ab.','Is ek galti ki wajah se tumhara {t} fail hota hai.','{t} ke liye mera simple 3-step plan.','Pehle 3 second me samjho: {t} kaise kaam karta hai.','Sab {t} ke baare me galat soch rahe hain.','{t} me shortcut chahiye? Ye lo.','Save kar lo: {t} ka poora checklist.'];
-const CAPS=['{t} par aaj ka ek simple tip. Save karo, baad me kaam aayega.','{t} me shuruaat karni hai? Comment me batao, agla video usi par.','Ye {t} wala tip kisi dost ko bhejo jo isme atka hai.','Roz thoda {t}. Fark 30 din me dikhega.','{t}: sach yahi hai. Aap kya sochte ho?','Follow karo, aise aur {t} tips ke liye.'];
-const NICHES={Fitness:['fitness','gymlife','workout','fitnessmotivation','healthylifestyle','fitindia'],Food:['foodie','foodreels','streetfood','recipe','homemade','indianfood'],Tech:['tech','techreels','gadgets','aitools','techtips','techindia'],Fashion:['fashion','ootd','styleinspo','fashionreels','outfitideas','streetwear'],Travel:['travel','travelreels','wanderlust','explore','travelindia','tripplan'],Education:['study','studytips','education','studymotivation','examprep','careertips'],Business:['business','entrepreneur','startup','sidehustle','marketing','freelancer'],Comedy:['comedy','funny','memes','relatable','comedyreels','desihumor']};
-const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
-function genHooks(){const t=S.topic.trim();if(!t){toast('Pehle topic likho');return}
-S.hooks=shuffle(HOOKS).slice(0,10).map(x=>x.split('{t}').join(t));S.caps=shuffle(CAPS).slice(0,3).map(x=>x.split('{t}').join(t));
-const words=t.toLowerCase().replace(/[^a-z0-9\s]/g,'').split(/\s+/).filter(w=>w.length>2).map(w=>'#'+w);
-S.tags=[...new Set([...words,...NICHES[S.niche].map(x=>'#'+x),'#reels','#viral','#explorepage'])].join(' ');$('#hout').innerHTML=hoursOut()}
-const hoursOut=()=>{if(!S.hooks.length)return '<div class="empty">Topic likho aur Hooks banao dabao.</div>';
-const row=x=>'<div class="hook"><p>'+esc(x)+'</p><button class="icon-btn sm" data-a="copy" data-x="'+esc(x)+'" aria-label="Copy">'+ic(I.copy,18)+'</button></div>';
-return '<div class="sora" style="font-weight:700">Hooks</div>'+S.hooks.map(row).join('')+'<div class="sora" style="font-weight:700">Captions</div>'+S.caps.map(row).join('')+'<div class="sora" style="font-weight:700">Hashtags</div>'+row(S.tags)};
-function hooksS(){return top('Hook Writer')+'<div class="chips">'+Object.keys(NICHES).map(n=>'<button class="chip '+(S.niche===n?'on':'')+'" data-a="h-niche" data-n="'+n+'">'+n+'</button>').join('')+'</div>'+
-'<div class="card">'+fld('Topic','h.topic',S.topic,'text','Jaise: protein diet, reels editing')+'<button class="btn lime full" data-a="h-gen">Hooks banao</button></div><div id="hout" style="display:flex;flex-direction:column;gap:12px">'+hoursOut()+'</div>'}
-
-/* ---------- link in bio ---------- */
-const fixUrl=u=>/^(https?:|mailto:|tel:)/i.test(u)?u:'https://'+u;
-function bioHtml(){const b=db.bio;const a=/^#[0-9a-f]{6}$/i.test(b.accent)?b.accent:'#C8F135';
-const l=b.links.filter(x=>x.l&&x.u).map(x=>'<a href="'+esc(fixUrl(x.u))+'">'+esc(x.l)+'</a>').join('');
-return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(b.name||'My links')+'</title><style>body{margin:0;background:#0E0D1A;color:#F4F3FF;font-family:system-ui,sans-serif;min-height:100vh;display:flex;justify-content:center}main{width:100%;max-width:420px;padding:48px 20px;display:flex;flex-direction:column;gap:14px;align-items:stretch;text-align:center}h1{margin:0;font-size:28px}p{margin:0 0 12px;color:#A9A6C8}a{display:block;padding:16px;border-radius:30px;background:'+a+';color:#0E0D1A;font-weight:700;text-decoration:none}</style></head><body><main><h1>'+esc(b.name||'Tumhara naam')+'</h1><p>'+esc(b.tag||'Apni ek line likho')+'</p>'+l+'</main></body></html>'}
-function bioS(){const b=db.bio;
-return top('Link in Bio')+'<div class="card">'+fld('Naam','bio.name',b.name,'text','Tumhara naam')+fld('Ek line','bio.tag',b.tag,'text','Tum kya karte ho?')+
-'<div class="mute">Links</div><div id="blinks">'+bioLinksH()+'</div>'+(b.links.length<6?'<button class="btn ghost sm" data-a="bio-add">+ Link jodo</button>':'')+
-'<div class="mute">Button ka color</div><div class="chips">'+[...new Set(db.brand.colors.concat(['#C8F135','#FF6A4D','#7B5CFF']))].map(c=>'<button class="sw" aria-label="Color '+c+'" data-a="bio-col" data-c="'+c+'" style="background:'+c+'"></button>').join('')+'</div></div>'+
-'<iframe class="prev" id="bframe" title="Preview" sandbox></iframe><div class="row2"><button class="btn ghost sm" data-a="bio-copy">HTML copy</button><button class="btn lime sm" data-a="bio-dl">Download</button></div>'}
-const bioLinksH=()=>db.bio.links.map((x,i)=>'<div class="rowf" style="margin-bottom:10px"><input class="inp" style="flex:1" data-i="bl.l" data-n="'+i+'" value="'+esc(x.l)+'" placeholder="Naam" aria-label="Link naam"><input class="inp" style="flex:1.4" data-i="bl.u" data-n="'+i+'" value="'+esc(x.u)+'" placeholder="instagram.com/..." aria-label="Link URL">'+(db.bio.links.length>1?'<button class="icon-btn sm" data-a="bio-rm" data-n="'+i+'" aria-label="Link hatao">'+ic(I.x,16)+'</button>':'')+'</div>').join('');
-function bioPreview(){const f=$('#bframe');if(f)f.srcdoc=bioHtml()}
-
-/* ---------- thumbnail designer ---------- */
-const DF=[['Sora',"'Sora'"],['DM Sans',"'DM Sans'"],['Georgia','Georgia'],['Impact','Impact']];
-const fcss=n=>(DF.find(x=>x[0]===n)||DF[0])[1];
-const newDesign=()=>({id:uid(),w:1280,h:720,bg:db.brand.colors[2]||'#7B5CFF',sel:null,layers:[{id:uid(),t:'text',text:'APNA TITLE\nYAHAN',x:90,y:150,size:140,color:db.brand.colors[0]||'#C8F135',font:db.brand.font||'Sora',weight:800}]});
-let D=newDesign(),cv=null,ctx=null,drag=null;const imgs={};
-const fontOf=l=>(l.weight||800)+' '+l.size+'px '+fcss(l.font)+',system-ui,sans-serif';
-function getImg(l){if(!imgs[l.id]){const i=new Image();i.onload=()=>drawCv();i.src=l.src;imgs[l.id]=i}return imgs[l.id]}
-function bounds(l){if(l.t==='text'){ctx.font=fontOf(l);const ls=l.text.split('\n');return{x:l.x,y:l.y,w:Math.max.apply(null,ls.map(s=>ctx.measureText(s||' ').width)),h:ls.length*l.size*1.12}}return{x:l.x,y:l.y,w:l.w,h:l.h}}
-function drawCv(exp){if(!ctx)return;ctx.clearRect(0,0,D.w,D.h);ctx.fillStyle=D.bg;ctx.fillRect(0,0,D.w,D.h);
-D.layers.forEach(l=>{if(l.t==='text'){ctx.font=fontOf(l);ctx.fillStyle=l.color;ctx.textBaseline='top';l.text.split('\n').forEach((s,i)=>ctx.fillText(s,l.x,l.y+i*l.size*1.12))}
-else if(l.t==='rect'){ctx.fillStyle=l.color;ctx.beginPath();if(ctx.roundRect)ctx.roundRect(l.x,l.y,l.w,l.h,l.w*.06);else ctx.rect(l.x,l.y,l.w,l.h);ctx.fill()}
-else if(l.t==='circle'){ctx.fillStyle=l.color;ctx.beginPath();ctx.ellipse(l.x+l.w/2,l.y+l.h/2,l.w/2,l.h/2,0,0,Math.PI*2);ctx.fill()}
-else if(l.t==='img'){const im=getImg(l);if(im.complete&&im.naturalWidth)ctx.drawImage(im,l.x,l.y,l.w,l.h)}});
-if(!exp&&D.sel){const l=D.layers.find(x=>x.id===D.sel);if(l){const b=bounds(l);const lw=Math.max(3,D.w/260);ctx.lineWidth=lw+3;ctx.strokeStyle='#0E0D1A';ctx.strokeRect(b.x,b.y,b.w,b.h);ctx.lineWidth=lw;ctx.strokeStyle='#C8F135';ctx.strokeRect(b.x,b.y,b.w,b.h)}}}
-const swH=act=>'<div class="chips">'+[...new Set(db.brand.colors.concat(['#FFFFFF','#0E0D1A']).map(c=>c.toUpperCase()))].map(c=>'<button class="sw" aria-label="Color '+c+'" data-a="'+act+'" data-c="'+c+'" style="background:'+c+'"></button>').join('')+'</div>';
-function dPanel(){const l=D.layers.find(x=>x.id===D.sel);
-if(!l)return '<div class="sora" style="font-weight:700">Background</div>'+swH('d-bg')+'<div class="mute">Kisi cheez ko tap karke chuno, phir ungli se hilao.</div>';
-let h='';
-if(l.t==='text')h+='<label class="fld"><span>Text</span><textarea rows="2" data-i="d.text">'+esc(l.text)+'</textarea></label><div class="chips">'+DF.map(f=>'<button class="chip '+(l.font===f[0]?'on':'')+'" data-a="d-font" data-f="'+f[0]+'" style="font-family:'+f[1]+'">'+f[0]+'</button>').join('')+'</div><label class="fld"><span>Size</span><input type="range" min="20" max="400" value="'+l.size+'" data-i="d.size"></label>';
-else h+='<label class="fld"><span>Size</span><input type="range" min="40" max="'+Math.round(D.w*1.5)+'" value="'+Math.round(l.w)+'" data-i="d.size"></label>';
-if(l.t!=='img')h+=swH('d-color');
-h+='<div class="row2"><button class="btn ghost sm" data-a="d-front">Aage lao</button><button class="btn ghost sm" data-a="d-rm">Hatao</button></div>';return h}
-function designerS(){
-const P=[['YouTube 16:9',1280,720],['Reel 9:16',1080,1920],['Post 1:1',1080,1080]];
-return top('Thumbnail','<button class="btn coral sm" data-a="d-export">Export</button>')+
-'<div class="cvwrap"><canvas id="cv" aria-label="Design canvas"></canvas></div>'+
-'<div class="chips">'+P.map(p=>'<button class="chip '+(D.w===p[1]&&D.h===p[2]?'on':'')+'" data-a="d-size" data-w="'+p[1]+'" data-h="'+p[2]+'">'+p[0]+'</button>').join('')+'<button class="chip" data-a="d-new">Naya</button></div>'+
-'<div class="tray"><button class="hot" data-a="d-text">'+ic(I.text)+'Text</button><button data-a="d-photo">'+ic(I.img)+'Photo</button><button data-a="d-box">'+ic(I.box)+'Box</button><button data-a="d-circ">'+ic(I.circ)+'Circle</button><button data-a="d-logo">'+ic(I.drop)+'Logo</button></div>'+
-'<div class="card" id="dpanel">'+dPanel()+'</div><div class="row2"><button class="btn ghost" data-a="d-save">Save Draft</button><button class="btn lime" data-a="d-export">Export PNG</button></div>'}
-function initDesigner(){cv=$('#cv');cv.width=D.w;cv.height=D.h;ctx=cv.getContext('2d');drawCv();
-if(document.fonts&&document.fonts.load){Promise.all([document.fonts.load("800 40px Sora"),document.fonts.load("700 40px 'DM Sans'")]).then(drawCv).catch(()=>{})}
-const pt=e=>{const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)*D.w/r.width,y:(e.clientY-r.top)*D.h/r.height}};
-cv.addEventListener('pointerdown',e=>{const p=pt(e);const pd=D.w*.012;let hit=null;for(let i=D.layers.length-1;i>=0;i--){const l=D.layers[i],b=bounds(l);if(p.x>=b.x-pd&&p.x<=b.x+b.w+pd&&p.y>=b.y-pd&&p.y<=b.y+b.h+pd){hit=l;break}}
-D.sel=hit?hit.id:null;drag=hit?{l:hit,dx:p.x-hit.x,dy:p.y-hit.y}:null;if(hit)cv.setPointerCapture(e.pointerId);drawCv();$('#dpanel').innerHTML=dPanel()});
-cv.addEventListener('pointermove',e=>{if(!drag)return;const p=pt(e);drag.l.x=p.x-drag.dx;drag.l.y=p.y-drag.dy;drawCv()});
-const end=()=>{drag=null};cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end)}
-function addLayer(l){l.id=uid();D.layers.push(l);D.sel=l.id;drawCv();$('#dpanel').innerHTML=dPanel()}
-const brandC=i=>db.brand.colors[i%db.brand.colors.length];
-function snap(w){const t=document.createElement('canvas');const k=w/D.w;t.width=w;t.height=Math.round(D.h*k);t.getContext('2d').drawImage(cv,0,0,t.width,t.height);return t.toDataURL('image/jpeg',0.7)}
-
-/* ---------- events ---------- */
-const A={
-back(){history.back()},
-go(el){go(el.dataset.r)},
-open(el){const o=$('.ov');if(o)o.remove();if(el.dataset.t==='invoice')INV=newInv();go(el.dataset.t)},
-sheet(){const o=document.createElement('div');o.className='ov';o.dataset.a='sheet-x';o.innerHTML='<div class="sh" data-a="noop"><div class="sora" style="font-weight:700;font-size:18px">Kya banana hai?</div><div class="grid2">'+TOOLS.map(tileH).join('')+'</div></div>';document.body.appendChild(o)},
-'sheet-x'(el,e){if(e.target===el)el.remove()},noop(){},
-copy(el){copyText(el.dataset.x)},
-/* brand */
-'b-addc'(){if(db.brand.colors.length>=8)return toast('Max 8 colors');db.brand.colors.push('#FFFFFF');save();render()},
-'b-rmc'(){if(db.brand.colors.length<=2)return toast('Kam se kam 2 colors rakho');db.brand.colors.pop();save();render()},
-'b-font'(el){db.brand.font=el.dataset.f;save();render()},
-'b-logo'(){$('#logoFile').click()},'b-rmlogo'(){db.brand.logo='';save();render()},
-/* invoice */
-'inv-add'(){INV.items.push({d:'',a:''});$('#items').innerHTML=itemsH()},
-'inv-rm'(el){INV.items.splice(+el.dataset.n,1);$('#items').innerHTML=itemsH();$('#paper').innerHTML=paperH()},
-'inv-save'(){const i=db.invoices.findIndex(x=>x.id===INV.id);const c=JSON.parse(JSON.stringify(INV));if(i>=0)db.invoices[i]=c;else{db.invoices.unshift(c);db.invN++}if(save())toast('Invoice save ho gaya')},
-'inv-open'(el){INV=JSON.parse(JSON.stringify(db.invoices.find(x=>x.id===el.dataset.id)));go('invoice')},
-'inv-del'(el){db.invoices=db.invoices.filter(x=>x.id!==el.dataset.id);save();render()},
-'inv-pdf'(){window.print()},
-'inv-upi'(){const v=INV,t=invTotal(v);if(!v.upi)return toast('Pehle UPI ID likho');copyText('upi://pay?pa='+encodeURIComponent(v.upi)+'&pn='+encodeURIComponent(v.from||'')+(t?'&am='+t:'')+'&cu=INR&tn='+encodeURIComponent('Invoice '+v.no))},
-'inv-wa'(){const v=INV;const t='Invoice '+v.no+'\n'+(v.from?v.from+' > ':'')+(v.client||'')+'\n'+v.items.filter(x=>x.d||x.a).map(x=>x.d+': '+inr(x.a)).join('\n')+'\nTotal: '+inr(invTotal(v))+(v.upi?'\nUPI: '+v.upi:'');window.open('https://wa.me/?text='+encodeURIComponent(t),'_blank')},
-/* planner */
-'p-day'(el){S.pdate=el.dataset.d;render()},
-'p-wk'(el){const d=parseISO(S.pdate);d.setDate(d.getDate()+(+el.dataset.d));S.pdate=iso(d);render()},
-'p-new'(){S.padd=true;render()},'p-cancel'(){S.padd=false;render()},
-'p-plat'(el){S.pplat=el.dataset.p;const t=($('[data-i="p.title"]')||{}).value,tm=($('[data-i="p.time"]')||{}).value;render();if(t)$('[data-i="p.title"]').value=t;if(tm)$('[data-i="p.time"]').value=tm},
-'p-add'(){const t=$('[data-i="p.title"]').value.trim();if(!t)return toast('Title likho');db.plans.push({id:uid(),title:t,platform:S.pplat,status:'Idea',date:S.pdate,time:$('[data-i="p.time"]').value});save();S.padd=false;render()},
-'p-st'(el){const p=db.plans.find(x=>x.id===el.dataset.id);p.status=ST[(ST.indexOf(p.status)+1)%ST.length];save();render()},
-'p-del'(el){db.plans=db.plans.filter(x=>x.id!==el.dataset.id);save();render()},
-/* hooks */
-'h-niche'(el){S.niche=el.dataset.n;const t=$('[data-i="h.topic"]').value;S.topic=t;render()},
-'h-gen'(){S.topic=$('[data-i="h.topic"]').value;genHooks()},
-/* bio */
-'bio-add'(){db.bio.links.push({l:'',u:''});save();$('#blinks').innerHTML=bioLinksH();render()},
-'bio-rm'(el){db.bio.links.splice(+el.dataset.n,1);save();render()},
-'bio-col'(el){db.bio.accent=el.dataset.c;save();bioPreview()},
-'bio-copy'(){copyText(bioHtml())},
-'bio-dl'(){download(new Blob([bioHtml()],{type:'text/html'}),'my-links.html')},
-/* designer */
-'d-text'(){addLayer({t:'text',text:'Naya text',x:D.w*.1,y:D.h*.4,size:Math.round(D.w/12),color:brandC(1),font:db.brand.font||'Sora',weight:800})},
-'d-box'(){addLayer({t:'rect',x:D.w*.1,y:D.h*.2,w:D.w*.3,h:D.w*.18,color:brandC(1)})},
-'d-circ'(){addLayer({t:'circle',x:D.w*.5,y:D.h*.2,w:D.w*.25,h:D.w*.25,color:brandC(1)})},
-'d-photo'(){$('#photoFile').click()},
-'d-logo'(){if(!db.brand.logo)return toast('Pehle Brand Kit me logo chuno');const im=new Image();im.onload=()=>{const w=D.w*.16;addLayer({t:'img',src:db.brand.logo,x:D.w*.05,y:D.h*.05,w:w,h:w*im.height/im.width})};im.src=db.brand.logo},
-'d-bg'(el){D.bg=el.dataset.c;drawCv()},
-'d-color'(el){const l=D.layers.find(x=>x.id===D.sel);if(l){l.color=el.dataset.c;drawCv()}},
-'d-font'(el){const l=D.layers.find(x=>x.id===D.sel);if(l){l.font=el.dataset.f;drawCv();$('#dpanel').innerHTML=dPanel()}},
-'d-front'(){const i=D.layers.findIndex(x=>x.id===D.sel);if(i>=0){D.layers.push(D.layers.splice(i,1)[0]);drawCv();toast('Sabse upar aa gaya')}},
-'d-rm'(){D.layers=D.layers.filter(x=>x.id!==D.sel);D.sel=null;drawCv();$('#dpanel').innerHTML=dPanel()},
-'d-size'(el){D.w=+el.dataset.w;D.h=+el.dataset.h;render()},
-'d-new'(){D=newDesign();render()},
-'d-export'(){const s=D.sel;D.sel=null;drawCv(true);cv.toBlob(b=>{if(b)download(b,'kitfy-thumbnail.png');D.sel=s;drawCv()},'image/png')},
-'d-save'(){const s=D.sel;D.sel=null;drawCv(true);const th=snap(360);D.sel=s;drawCv();const st={id:D.id,thumb:th,state:{w:D.w,h:D.h,bg:D.bg,layers:D.layers}};const i=db.designs.findIndex(x=>x.id===D.id);if(i>=0)db.designs[i]=st;else db.designs.unshift(st);db.designs=db.designs.slice(0,12);if(save())toast('Draft save ho gaya')},
-'d-load'(el){const d=db.designs.find(x=>x.id===el.dataset.id);D=Object.assign({id:d.id,sel:null},JSON.parse(JSON.stringify(d.state)));go('designer')},
-'d-del'(el){db.designs=db.designs.filter(x=>x.id!==el.dataset.id);save();render()}
-};
-document.addEventListener('click',e=>{const el=e.target.closest('[data-a]');if(!el)return;const f=A[el.dataset.a];if(f)f(el,e)});
-const IN={
-q(v){S.q=v;$('#grid').innerHTML=gridH()},
-'inv.from'(v){INV.from=v;$('#paper').innerHTML=paperH()},'inv.client'(v){INV.client=v;$('#paper').innerHTML=paperH()},'inv.no'(v){INV.no=v;$('#paper').innerHTML=paperH()},'inv.date'(v){INV.date=v;$('#paper').innerHTML=paperH()},'inv.upi'(v){INV.upi=v;$('#paper').innerHTML=paperH()},'inv.note'(v){INV.note=v;$('#paper').innerHTML=paperH()},
-'item.d'(v,el){INV.items[+el.dataset.n].d=v;$('#paper').innerHTML=paperH()},'item.a'(v,el){INV.items[+el.dataset.n].a=v;$('#paper').innerHTML=paperH()},
-'h.topic'(v){S.topic=v},
-'b.name'(v){db.brand.name=v;save();$('#bprev').innerHTML=brandPrev()},
-'b.color'(v,el){db.brand.colors[+el.dataset.n]=v.toUpperCase();save();$('#bprev').innerHTML=brandPrev()},
-'bio.name'(v){db.bio.name=v;save();bioPreview()},'bio.tag'(v){db.bio.tag=v;save();bioPreview()},
-'bl.l'(v,el){db.bio.links[+el.dataset.n].l=v;save();bioPreview()},'bl.u'(v,el){db.bio.links[+el.dataset.n].u=v;save();bioPreview()},
-'d.text'(v){const l=D.layers.find(x=>x.id===D.sel);if(l){l.text=v;drawCv()}},
-'d.size'(v){const l=D.layers.find(x=>x.id===D.sel);if(!l)return;if(l.t==='text')l.size=+v;else{const r=l.h/l.w;l.w=+v;l.h=+v*r}drawCv()}
-};
-document.addEventListener('input',e=>{const el=e.target;const k=el.dataset&&el.dataset.i;if(k&&IN[k])IN[k](el.value,el)});
-document.addEventListener('change',e=>{const el=e.target;const f=el.files&&el.files[0];if(!f)return;
-if(el.id==='photoFile'){resizeImage(f,1280,(src,w,h)=>{const k=D.w*.5/w;const l={t:'img',src:src,x:D.w*.25,y:D.h*.1,w:w*k,h:h*k};if(S.route==='designer')addLayer(l)});el.value=''}
-if(el.id==='logoFile'){resizeImage(f,512,src=>{db.brand.logo=src;save();render()});el.value=''}});
-render();
-</script>
-</body>
-</html>
+const inv=db.invoices.map(v=>'<div class="row-item"><button class="grow" data-a="inv-open" data-id="'+v.i
