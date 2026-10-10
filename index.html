@@ -61,8 +61,8 @@ h2{margin:0;font-size:20px}
 .paper .lbl{font-size:12px;font-weight:700;color:#5A5775}
 .paper .li{display:flex;justify-content:space-between;gap:12px;font-size:15px}
 .paper .tot{font-size:26px;font-weight:800;color:#5B3FE0}
-.cvwrap{display:grid;place-items:center;background:var(--surf);border-radius:20px;padding:10px}
-#cv{max-width:100%;max-height:42dvh;width:auto;height:auto;border-radius:10px;touch-action:none;display:block}
+.cvwrap{display:grid;place-items:center;background:var(--surf);border-radius:20px;padding:10px;position:sticky;top:8px;z-index:6;box-shadow:0 10px 24px rgba(0,0,0,.55)}
+#cv{max-width:100%;max-height:32dvh;width:auto;height:auto;border-radius:10px;touch-action:none;display:block}
 .tray{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
 .tray button{height:64px;border:0;border-radius:18px;background:var(--surf);color:var(--mist);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font:500 11px 'DM Sans',sans-serif;cursor:pointer}
 .tray button.hot{background:var(--lime);color:var(--ink);font-weight:700}
@@ -160,6 +160,7 @@ const TOOLS=[
 {id:'planner',name:'Planner',sub:'Ideas and dates',bg:'var(--lime)',fg:'var(--ink)',ic:'cal'},
 {id:'hooks',name:'Hook Writer',sub:'Hooks and captions',bg:'var(--coral)',fg:'var(--ink)',ic:'bolt'},
 {id:'brand',name:'Brand Kit',sub:'Colors, fonts, logo',bg:'var(--lime)',fg:'var(--ink)',ic:'drop'},
+{id:'ai',name:'Kitfy AI',sub:'Scripts, titles, tags',bg:'var(--violet)',fg:'#fff',ic:'bolt'},
 {id:'bio',name:'Link in Bio',sub:'Portfolio page',bg:'var(--violet)',fg:'#fff',ic:'link'}
 ];
 function go(r,push=true){S.route=r;if(push)history.pushState({r:r},'');render()}
@@ -181,7 +182,7 @@ if(R==='chat'&&!CHAT)return 'discover';
 return (R==='auth'||R==='setup')?'home':R}
 function render(){
 const R=guard(S.route);if(R!=='me'&&R!=='setup')PF=null;
-const S_={home:homeS,saved:savedS,designer:designerS,invoice:invoiceS,planner:plannerS,hooks:hooksS,brand:brandS,bio:bioS,auth:authS,setup:setupS,me:meS,discover:discoverS,profile:profileS,wait:waitS,chat:chatS,settings:settingsS,inbox:inboxS,verify:verifyS,legal:legalS};
+const S_={home:homeS,saved:savedS,designer:designerS,invoice:invoiceS,planner:plannerS,hooks:hooksS,brand:brandS,bio:bioS,auth:authS,setup:setupS,me:meS,discover:discoverS,profile:profileS,wait:waitS,chat:chatS,settings:settingsS,inbox:inboxS,verify:verifyS,legal:legalS,ai:aiS};
 const withNav=R==='home'||R==='saved'||R==='discover'||R==='me';
 $('#app').innerHTML='<div class="scroll">'+S_[R]()+'</div>'+(withNav?nav(R):'');
 if(R==='designer')initDesigner();
@@ -395,6 +396,12 @@ function inboxListen(){if(INBOX.un||!FB||!AUTH.user)return;const me=AUTH.user.ui
 function verifyS(){const u=AUTH.user||{};return topBar('Verify your email')+'<div class="card"><b class="sora">Check your inbox</b><div class="mute">We sent a verification link to '+esc(u.email||'')+'. Open it, then tap the button below. Also check your Spam folder.</div><button class="btn lime full" data-a="ver-check">I have verified</button><button class="btn ghost full" data-a="ver-resend">Resend email</button><button class="btn ghost full" data-a="au-out">Logout</button></div>'}
 function legalS(){return topBar('Privacy and Terms')+'<div class="card legal"><b class="sora">Privacy Policy</b><p>Kitfy collects the email you sign up with, the profile details you choose to add (name, role, city, bio, photo, social handles, WhatsApp number) and the messages you send in chat.</p><p>Your profile is visible to other logged-in Kitfy users. Chat messages are visible only to the people in that chat. Saved invoices, designs and brand kit stay on your own phone.</p><p>Data is stored with Google Firebase. We do not sell your data. You can edit your profile any time, and you can ask the Kitfy team to delete your account and data.</p><b class="sora">Terms of Use</b><p>You must be 18 or older. Do not post illegal, abusive or misleading content, or impersonate others. We may remove accounts that break these rules.</p><p>Kitfy only connects editors, designers, freelancers and clients. Any payment happens directly between you and the other person. Kitfy does not hold money, does not guarantee payment or work quality, and is not a party to any deal.</p><p>Always verify the other person before sharing money or files. Kitfy is provided as is, and these terms may change.</p></div>'}
 
+
+const AI_URL='';
+let AIS={kind:'script',topic:'',out:'',busy:false};
+const AI_KINDS=[['script','Video script'],['titles','Titles'],['description','Description'],['hashtags','Hashtags'],['caption','Captions']];
+function aiS(){return topBar('Kitfy AI')+'<div class="card"><div class="chips">'+AI_KINDS.map(k=>'<button class="chip '+(AIS.kind===k[0]?'on':'')+'" data-a="ai-kind" data-k="'+k[0]+'">'+k[1]+'</button>').join('')+'</div><label class="fld"><span>Topic or video idea</span><textarea rows="3" maxlength="400" data-i="ai.topic" placeholder="e.g. 5 editing tips for beginners">'+esc(AIS.topic)+'</textarea></label><button class="btn lime full" data-a="ai-go"'+(AIS.busy?' disabled':'')+'>'+(AIS.busy?'Writing...':'Generate')+'</button></div>'+(AIS.out?'<div class="card"><div style="white-space:pre-wrap;line-height:1.5">'+esc(AIS.out)+'</div><button class="btn ghost full" data-a="ai-copy">Copy</button></div>':'')}
+
 /* auth screens */
 function accH(){const st=AUTH.status;
 if(st==='ok'&&AUTH.profile){const p=AUTH.profile;return '<button class="pcard" data-a="go" data-r="me">'+avatarH(p,44)+'<span class="tx"><b class="sora">Hello, '+esc(String(p.name).split(' ')[0])+'</b><div class="mute">'+esc(roleName(p.role))+' · View / edit profile</div></span>'+ic(I.chev,18)+'</button>'}
@@ -477,6 +484,9 @@ try{await FB.auth.sendPasswordResetEmail(e);toast('Reset email sent. Also check 
 'ver-check'(){if(!FB||!FB.auth.currentUser)return;FB.auth.currentUser.reload().then(()=>{const u=FB.auth.currentUser;if(!u.emailVerified){toast('Email not verified yet.');return}return u.getIdToken(true).then(()=>{AUTH.user=u;AUTH.status='loading';render();return loadProfile().then(afterAuth)})}).catch(()=>toast('Check your internet'))},
 'ver-resend'(){if(FB&&FB.auth.currentUser)FB.auth.currentUser.sendEmailVerification().then(()=>toast('Verification email sent.')).catch(()=>toast('Please wait a minute and try again.'))},
 'acct-del'(){if(!AUTH.user||!FB)return;if(!confirm('Delete your account and profile permanently? This cannot be undone.'))return;const u=FB.auth.currentUser;FB.fs.collection('users').doc(u.uid).delete().then(()=>u.delete()).then(()=>{try{localStorage.removeItem('kitfy:v1:'+u.uid)}catch(e){}toast('Account deleted')}).catch(e=>toast(e&&e.code==='auth/requires-recent-login'?'Please log out, log in again, then delete.':'Could not delete. Try again.'))},
+'ai-kind'(el){AIS.kind=el.dataset.k;render()},
+'ai-copy'(){navigator.clipboard&&navigator.clipboard.writeText(AIS.out).then(()=>toast('Copied')).catch(()=>toast('Could not copy'))},
+'ai-go'(){if(!AI_URL){toast('Kitfy AI is not connected yet');return}if(!AUTH.user||!FB){toast('Please log in first');return}if(AIS.topic.trim().length<3){toast('Enter a topic first');return}AIS.busy=true;render();FB.auth.currentUser.getIdToken().then(tok=>fetch(AI_URL,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tok},body:JSON.stringify({kind:AIS.kind,topic:AIS.topic.trim().slice(0,400)})})).then(r=>r.json()).then(j=>{AIS.out=j.text||j.error||'No result'}).catch(()=>{AIS.out='Could not reach Kitfy AI. Check your internet.'}).then(()=>{AIS.busy=false;render()})},
 'au-out'(){if(INBOX.un){INBOX.un();INBOX.un=null}INBOX.items=[];S.route='home';history.replaceState({r:'home'},'');PF=null;if(FB)FB.auth.signOut();toast('Logged out')},
 'au-retry'(){AUTH.status='loading';render();if(FB&&AUTH.user)loadProfile();else fbInit()},
 'pf-role'(el){if(!PF)return;PF.role=el.dataset.r;document.querySelectorAll('.role').forEach(b=>{const on=b===el;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on)})},
@@ -574,7 +584,7 @@ q(v){S.q=v;$('#grid').innerHTML=gridH()},
 'd.fb'(v){setF('b',v)},'d.fc'(v){setF('c',v)},'d.fs'(v){setF('s',v)},'d.fbl'(v){setF('bl',v)},
 'd-rmbg'(){const l=D.layers.find(x=>x.id===D.sel);if(l&&l.t==='img')rmBg(l)},
 'd.tol'(v){const l=D.layers.find(x=>x.id===D.sel);if(l)l.tol=+v},'d.cl'(v){setC('l',v)},'d.ct'(v){setC('t',v)},'d.cr'(v){setC('r',v)},'d.cb'(v){setC('b',v)},
-'d.cbg'(v){D.bg=v;drawCv()},'d.ccol'(v){const l=D.layers.find(x=>x.id===D.sel);if(l){l.color=v;drawCv()}},
+'ai.topic'(v){AIS.topic=v},'d.cbg'(v){D.bg=v;drawCv()},'d.ccol'(v){const l=D.layers.find(x=>x.id===D.sel);if(l){l.color=v;drawCv()}},
 'd.size'(v){const l=D.layers.find(x=>x.id===D.sel);if(!l)return;if(l.t==='text')l.size=+v;else{const r=l.h/l.w;l.w=+v;l.h=+v*r}drawCv()}
 };
 document.addEventListener('input',e=>{const el=e.target;const k=el.dataset&&el.dataset.i;if(k&&IN[k])IN[k](el.value,el)});
