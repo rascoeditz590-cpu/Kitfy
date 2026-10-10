@@ -44,13 +44,28 @@ jobs:
         run: |
           echo "Assets folder me ye files hain:"
           ls -la assets
+          LIME=$(ls assets/*lime*.png 2>/dev/null | head -n1)
+          FG=$(ls assets/*foreground*.png 2>/dev/null | head -n1)
+          if [ -z "$LIME" ]; then
+            echo "ERROR: lime icon PNG assets folder me nahi mila"
+            exit 1
+          fi
+          if [ -z "$FG" ]; then FG="$LIME"; fi
+          echo "Icon: $LIME"
+          echo "Foreground: $FG"
           mkdir -p icon-src
-          cp "assets/ICON_FILE.png" icon-src/icon-only.png
-          cp "assets/ICON_FILE.png" icon-src/icon-foreground.png
+          cp "$LIME" icon-src/icon-only.png
+          cp "$FG" icon-src/icon-foreground.png
           npm install @capacitor/assets
           npx capacitor-assets generate --android --assetPath icon-src --iconBackgroundColor '#C8F135' --iconBackgroundColorDark '#C8F135'
 
-            - name: APK rename karo
+      - name: Debug APK build karo
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: APK rename karo
         run: cp android/app/build/outputs/apk/debug/app-debug.apk Kitfy.apk
 
       - name: APK upload karo
