@@ -40,14 +40,21 @@ jobs:
           npx cap add android
           npx cap sync android
 
-      - name: Debug APK build karo
-        working-directory: android
+      - name: Icons banao
         run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          echo "Assets folder me ye files hain:"
+          ls -la assets
+          mkdir -p icon-src
+          cp "assets/ICON_FILE.png" icon-src/icon-only.png
+          cp "assets/ICON_FILE.png" icon-src/icon-foreground.png
+          npm install @capacitor/assets
+          npx capacitor-assets generate --android --assetPath icon-src --iconBackgroundColor '#C8F135' --iconBackgroundColorDark '#C8F135'
+
+            - name: APK rename karo
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk Kitfy.apk
 
       - name: APK upload karo
         uses: actions/upload-artifact@v4
         with:
           name: Kitfy-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: Kitfy.apk
