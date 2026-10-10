@@ -90,6 +90,15 @@ h2{margin:0;font-size:20px}
 .empty{padding:18px;border-radius:20px;border:2px dashed var(--line2);color:var(--mute);font-size:14px;text-align:center}
 .logoimg{width:72px;height:72px;border-radius:18px;object-fit:cover;background:var(--surf2)}
 iframe.prev{width:100%;height:420px;border:0;border-radius:20px;background:#fff}
+.role{height:72px;padding:12px 14px;border-radius:20px;background:var(--surf);border:2px solid var(--line);color:var(--mist);text-align:left;cursor:pointer;display:flex;flex-direction:column;justify-content:center;gap:2px;font:700 15px 'Sora',system-ui,sans-serif}
+.role small{font:400 12px 'DM Sans',sans-serif;color:var(--mute)}
+.role.on{border-color:var(--lime);background:var(--surf2)}
+.av{border-radius:50%;object-fit:cover;background:var(--surf2);display:grid;place-items:center;color:var(--lime);font:800 20px 'Sora',sans-serif;flex:none;overflow:hidden}
+.err{color:var(--coral);font-size:14px;line-height:1.4}
+.pcard{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:20px;background:var(--surf);border:1px solid var(--line);width:100%;text-align:left;color:var(--mist);cursor:pointer}
+.pcard .tx{flex:1;min-width:0}
+.pcard .bi{font-size:13px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.btn:disabled{opacity:.6;cursor:default}
 @media print{body *{visibility:hidden}#paper,#paper *{visibility:visible}#paper{position:absolute;left:0;top:0;width:100%;border-radius:0}}
 </style>
 </head>
@@ -97,6 +106,7 @@ iframe.prev{width:100%;height:420px;border:0;border-radius:20px;background:#fff}
 <div id="app"></div>
 <input type="file" id="photoFile" accept="image/*" hidden>
 <input type="file" id="logoFile" accept="image/*" hidden>
+<input type="file" id="avatarFile" accept="image/*" hidden>
 <script>
 /* ---------- helpers ---------- */
 const $=(s,r=document)=>r.querySelector(s);
@@ -119,6 +129,9 @@ home:'<path d="M4 11l8-7 8 7v9H4z"/>',bookmark:'<path d="M6 4h12v16l-6-4-6 4z"/>
 trash:'<path d="M5 7h14M10 7V4.5h4V7M7 7l1 13h8l1-13"/>',copy:'<rect x="8" y="8" width="11" height="12" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h8"/>',
 search:'<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/>',text:'<path d="M5 6V4.5h14V6M12 4.5V20M9 20h6"/>',
 box:'<rect x="4" y="6" width="16" height="12" rx="3"/>',circ:'<circle cx="12" cy="12" r="7.5"/>',
+people:'<circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c0-3.3 2.5-5.5 5.5-5.5s5.5 2.2 5.5 5.5"/><circle cx="17" cy="9" r="2.4"/><path d="M16 13.8c2.8 0 4.5 2 4.5 4.7"/>',
+user:'<circle cx="12" cy="8" r="3.8"/><path d="M4.5 20c0-4 3.3-6.5 7.5-6.5s7.5 2.5 7.5 6.5"/>',
+refresh:'<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>',
 chev:'<path d="M9 5l7 7-7 7"/>',left:'<path d="M15 5l-7 7 7 7"/>',x:'<path d="M6 6l12 12M18 6L6 18"/>',front:'<path d="M12 4l9 5-9 5-9-5zM3 14l9 5 9-5"/>'
 };
 const logo=(s,bg,fg)=>'<span style="width:'+s+'px;height:'+s+'px;border-radius:'+Math.round(s*.28)+'px;background:'+bg+';display:grid;place-items:center"><svg width="'+Math.round(s*.6)+'" height="'+Math.round(s*.6)+'" viewBox="0 0 36 36" fill="none" aria-hidden="true"><path d="M10 8V28" stroke="'+fg+'" stroke-width="4.5" stroke-linecap="round"/><path d="M26 9L13.5 18L26 28" stroke="'+fg+'" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="29" cy="8" r="3" fill="#FF6A4D"/></svg></span>';
@@ -132,45 +145,6 @@ let tt;function toast(m){let t=$('.toast');if(!t){t=document.createElement('div'
 function copyText(x){if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(x).then(()=>toast('Copy ho gaya'),fb)}else fb();function fb(){const a=document.createElement('textarea');a.value=x;document.body.appendChild(a);a.select();try{document.execCommand('copy');toast('Copy ho gaya')}catch(e){toast('Copy nahi hua')}a.remove()}}
 function download(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500)}
 function resizeImage(file,max,cb){const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,max/Math.max(im.width,im.height));const c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);cb(c.toDataURL(file.type==='image/png'?'image/png':'image/jpeg',0.88),c.width,c.height)};im.src=r.result};r.readAsDataURL(file)}
-
-
-function blobToB64(b){return new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result).split(',')[1]);r.onerror=no;r.readAsDataURL(b)})}
-const isNative=()=>{const C=window.Capacitor;return !!(C&&C.isNativePlatform&&C.isNativePlatform()&&C.Plugins&&C.Plugins.Filesystem&&C.Plugins.Share)};
-async function saveFile(blob,name){
-if(isNative()){try{const C=window.Capacitor.Plugins;const r=await C.Filesystem.writeFile({path:name,data:await blobToB64(blob),directory:'CACHE'});await C.Share.share({title:name,files:[r.uri],dialogTitle:'Save ya share karo'})}catch(e){const m=String((e&&e.message)||e);if(!/cancel/i.test(m))toast('Save nahi hua: '+m)}return}
-download(blob,name)}
-async function shareText(t){
-if(isNative()){try{await window.Capacitor.Plugins.Share.share({text:t,dialogTitle:'Bhejo'})}catch(e){}return}
-if(navigator.share){try{await navigator.share({text:t})}catch(e){}return}
-window.open('https://wa.me/?text='+encodeURIComponent(t),'_blank')}
-function makePdf(jpg,w,h){const enc=new TextEncoder(),parts=[],offs=[];let len=0;
-const push=x=>{const b=typeof x==='string'?enc.encode(x):x;parts.push(b);len+=b.length};
-const obj=(n,body)=>{offs[n]=len;push(n+' 0 obj\n'+body+'\nendobj\n')};
-const pw=595,ph=Math.round(595*h/w);
-push('%PDF-1.4\n');
-obj(1,'<< /Type /Catalog /Pages 2 0 R >>');obj(2,'<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
-obj(3,'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+pw+' '+ph+'] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>');
-offs[4]=len;push('4 0 obj\n<< /Type /XObject /Subtype /Image /Width '+w+' /Height '+h+' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '+jpg.length+' >>\nstream\n');push(jpg);push('\nendstream\nendobj\n');
-const cs='q '+pw+' 0 0 '+ph+' 0 0 cm /Im0 Do Q';obj(5,'<< /Length '+cs.length+' >>\nstream\n'+cs+'\nendstream');
-const xr=len;let x='xref\n0 6\n0000000000 65535 f \n';for(let i=1;i<=5;i++)x+=String(offs[i]).padStart(10,'0')+' 00000 n \n';
-push(x+'trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n'+xr+'\n%%EOF');return new Blob(parts,{type:'application/pdf'})}
-async function invCanvas(){const v=INV,W=1080,rows=v.items.filter(x=>x.d||x.a);
-try{await Promise.all([document.fonts.load("800 40px Sora"),document.fonts.load("700 40px 'DM Sans'")])}catch(e){}
-const H=640+rows.length*76+(v.upi?70:0)+(v.note?110:0);const c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
-g.fillStyle='#fff';g.fillRect(0,0,W,H);g.textBaseline='top';
-const T=(t,x,y,f,col,al,mw)=>{g.font=f;g.fillStyle=col;g.textAlign=al||'left';mw?g.fillText(t,x,y,mw):g.fillText(t,x,y)};
-const SF="'Sora',system-ui,sans-serif",DF2="'DM Sans',system-ui,sans-serif";
-T('INVOICE',70,70,'800 64px '+SF,'#0E0D1A');T(v.no||'',W-70,90,'700 40px '+DF2,'#5B3FE0','right');
-g.fillStyle='#0E0D1A';g.fillRect(70,170,W-140,4);
-let y=210;T('FROM',70,y,'700 26px '+DF2,'#5A5775');y+=36;T(v.from||'-',70,y,'700 42px '+SF,'#0E0D1A','left',W-140);y+=84;
-T('BILL TO',70,y,'700 26px '+DF2,'#5A5775');y+=36;T(v.client||'-',70,y,'700 42px '+SF,'#0E0D1A','left',W-140);y+=84;
-T('Date: '+v.date,70,y,'500 30px '+DF2,'#5A5775');y+=70;
-rows.forEach(x=>{T(x.d||'Kaam',70,y,'500 36px '+DF2,'#0E0D1A','left',640);T(inr(x.a),W-70,y,'700 36px '+DF2,'#0E0D1A','right');y+=76});
-g.fillStyle='#0E0D1A';g.fillRect(70,y,W-140,4);y+=30;
-T('Total',70,y+10,'700 40px '+DF2,'#0E0D1A');T(inr(invTotal(v)),W-70,y,'800 58px '+SF,'#5B3FE0','right');y+=100;
-if(v.upi){T('UPI: '+v.upi,70,y,'700 34px '+DF2,'#0E0D1A','left',W-140);y+=70}
-if(v.note)T(v.note,70,y,'400 32px '+DF2,'#0E0D1A','left',W-140);
-return c}
 
 /* ---------- state + router ---------- */
 const S={q:'',route:'home',pdate:iso(new Date()),padd:false,pplat:'YouTube',niche:'Fitness',topic:'',hooks:[],caps:[],tags:''};
@@ -186,16 +160,25 @@ function go(r,push=true){S.route=r;if(push)history.pushState({r:r},'');render()}
 history.replaceState({r:'home'},'');
 window.addEventListener('popstate',e=>{S.route=(e.state&&e.state.r)||'home';render()});
 
-const topbar=(t,right)=>'<div class="top"><button class="icon-btn" data-a="back" aria-label="Wapas">'+ic(I.back)+'</button><h2>'+t+'</h2>'+(right||'')+'</div>';
-const nav=a=>'<nav class="nav"><button data-a="go" data-r="home" class="'+(a==='home'?'on':'')+'">'+ic(I.home,24)+'Home</button><button class="fab" data-a="sheet" aria-label="Naya banao">'+ic(I.plus,26,3)+'</button><button data-a="go" data-r="saved" class="'+(a==='saved'?'on':'')+'">'+ic(I.bookmark,24)+'Saved</button></nav>';
+const topBar=(t,right)=>'<div class="top"><button class="icon-btn" data-a="back" aria-label="Wapas">'+ic(I.back)+'</button><h2>'+t+'</h2>'+(right||'')+'</div>';
+const nav=a=>'<nav class="nav"><button data-a="go" data-r="home" class="'+(a==='home'?'on':'')+'">'+ic(I.home,24)+'Home</button><button data-a="go" data-r="discover" class="'+(a==='discover'?'on':'')+'">'+ic(I.people,24)+'Discover</button><button class="fab" data-a="sheet" aria-label="Naya banao">'+ic(I.plus,26,3)+'</button><button data-a="go" data-r="saved" class="'+(a==='saved'?'on':'')+'">'+ic(I.bookmark,24)+'Saved</button><button data-a="go" data-r="me" class="'+(a==='me'?'on':'')+'">'+ic(I.user,24)+'Profile</button></nav>';
 const fld=(label,key,val,type,ph)=>'<label class="fld"><span>'+label+'</span><input data-i="'+key+'" type="'+(type||'text')+'" value="'+esc(val)+'" placeholder="'+esc(ph||'')+'"></label>';
 
+function guard(R){const st=AUTH.status;
+if(!(R==='auth'||R==='setup'||R==='discover'||R==='me'||R==='profile'))return R;
+if(st==='loading'||st==='error')return 'wait';
+if(st==='out')return 'auth';
+if(st==='setup')return 'setup';
+if(R==='profile'&&!VIEW)return 'discover';
+return (R==='auth'||R==='setup')?'home':R}
 function render(){
-const R=S.route;const S_={home:homeS,saved:savedS,designer:designerS,invoice:invoiceS,planner:plannerS,hooks:hooksS,brand:brandS,bio:bioS};
-const withNav=R==='home'||R==='saved';
+const R=guard(S.route);if(R!=='me'&&R!=='setup')PF=null;
+const S_={home:homeS,saved:savedS,designer:designerS,invoice:invoiceS,planner:plannerS,hooks:hooksS,brand:brandS,bio:bioS,auth:authS,setup:setupS,me:meS,discover:discoverS,profile:profileS,wait:waitS};
+const withNav=R==='home'||R==='saved'||R==='discover'||R==='me';
 $('#app').innerHTML='<div class="scroll">'+S_[R]()+'</div>'+(withNav?nav(R):'');
 if(R==='designer')initDesigner();
-if(R==='bio')bioPreview(true);
+if(R==='bio')bioPreview();
+if(R==='discover'&&!DS.loaded&&!DS.loading)loadDiscover();
 }
 
 /* ---------- home ---------- */
@@ -203,9 +186,332 @@ const tileH=t=>'<button class="tile" data-a="open" data-t="'+t.id+'"><span class
 function gridH(){const q=S.q.toLowerCase();const l=TOOLS.filter(t=>(t.name+' '+t.sub).toLowerCase().includes(q));return l.length?l.map(tileH).join(''):'<div class="empty" style="grid-column:1/-1">Ye tool nahi mila. Koi aur naam try karo.</div>'}
 function homeS(){return '<div class="top">'+logo(40,'#C8F135','#0E0D1A')+'<h2 style="font-size:26px;font-weight:800;letter-spacing:-.5px">Kitfy</h2></div>'+
 '<label class="search">'+ic(I.search,20)+'<input data-i="q" type="text" placeholder="Tool dhundo..." aria-label="Tool dhundo" value="'+esc(S.q)+'"></label>'+
-'<div class="hero"><div><div style="font-size:13px;font-weight:700">Aaj ka kaam</div><h3>Ek thumbnail banao,<br>2 minute mein.</h3></div><button class="btn" data-a="open" data-t="designer">Shuru karo</button></div>'+
+accH()+'<div class="hero"><div><div style="font-size:13px;font-weight:700">Aaj ka kaam</div><h3>Ek thumbnail banao,<br>2 minute mein.</h3></div><button class="btn" data-a="open" data-t="designer">Shuru karo</button></div>'+
 '<div class="sora" style="font-weight:700;font-size:18px">Tumhare tools</div><div class="grid2" id="grid">'+gridH()+'</div>'}
 
 /* ---------- saved ---------- */
 function savedS(){
-const inv=db.invoices.map(v=>'<div class="row-item"><button class="grow" data-a="inv-open" data-id="'+v.i
+const inv=db.invoices.map(v=>'<div class="row-item"><button class="grow" data-a="inv-open" data-id="'+v.id+'"><b class="sora">'+esc(v.no)+'</b> <span class="mute">'+esc(v.client||'Client')+'</span><div class="mute">'+inr(invTotal(v))+'</div></button><button class="icon-btn sm" data-a="inv-del" data-id="'+v.id+'" aria-label="Invoice hatao">'+ic(I.trash,18)+'</button></div>').join('');
+const th=db.designs.map(d=>'<div class="thumb"><button style="border:0;padding:0;display:block;width:100%;cursor:pointer;background:none" data-a="d-load" data-id="'+d.id+'" aria-label="Design kholo"><img src="'+d.thumb+'" alt="Saved design"></button><button class="icon-btn sm x" data-a="d-del" data-id="'+d.id+'" aria-label="Design hatao">'+ic(I.x,16)+'</button></div>').join('');
+return '<div class="top"><h2 style="font-size:24px">Saved</h2></div>'+
+'<div class="sora" style="font-weight:700">Invoices</div>'+(inv||'<div class="empty">Abhi koi invoice save nahi hua. Invoice tool me banao.</div>')+
+'<div class="sora" style="font-weight:700">Thumbnails</div>'+(th?'<div class="thumbs">'+th+'</div>':'<div class="empty">Abhi koi design save nahi hua. Thumbnail me Save Draft dabao.</div>')}
+
+/* ---------- brand kit ---------- */
+function brandS(){const b=db.brand;
+const FONTS=['Sora','DM Sans','Georgia','Impact'];
+return topBar('Brand Kit')+
+'<div class="card">'+fld('Brand ka naam','b.name',b.name,'text','Apna naam ya brand')+
+'<div><div class="mute" style="margin-bottom:8px">Colors</div><div class="chips" id="bcols">'+b.colors.map((c,i)=>'<input class="cin" type="color" data-i="b.color" data-n="'+i+'" value="'+c+'" aria-label="Color '+(i+1)+'">').join('')+'</div></div>'+
+'<div class="rowf"><button class="btn ghost sm" data-a="b-addc">+ Color</button><button class="btn ghost sm" data-a="b-rmc">Aakhri hatao</button></div></div>'+
+'<div class="card"><div class="mute">Font</div><div class="chips">'+FONTS.map(f=>'<button class="chip '+(b.font===f?'on':'')+'" data-a="b-font" data-f="'+f+'" style="font-family:'+(f==='Sora'||f==='DM Sans'?"'"+f+"'":f)+'">'+f+'</button>').join('')+'</div></div>'+
+'<div class="card"><div class="mute">Logo</div><div class="rowf">'+(b.logo?'<img class="logoimg" src="'+b.logo+'" alt="Logo">':'<div class="logoimg"></div>')+'<button class="btn ghost sm" data-a="b-logo">Logo chuno</button>'+(b.logo?'<button class="btn ghost sm" data-a="b-rmlogo">Hatao</button>':'')+'</div></div>'+
+'<div class="card" id="bprev">'+brandPrev()+'</div>'}
+function brandPrev(){const b=db.brand;return '<div class="mute">Kit preview</div><div style="font:800 28px '+(b.font==='Sora'||b.font==='DM Sans'?"'"+b.font+"'":b.font)+',system-ui">'+esc(b.name||'Tumhara brand')+'</div><div style="display:flex;height:36px;border-radius:18px;overflow:hidden">'+b.colors.map(c=>'<div style="flex:1;background:'+c+'"></div>').join('')+'</div><div class="mute">Designer me ye colors, font aur logo ek tap me milte hain.</div>'}
+
+/* ---------- invoice ---------- */
+const newInv=()=>({id:uid(),no:'KF-'+String(db.invN+1).padStart(3,'0'),date:iso(new Date()),from:db.brand.name||'',client:'',items:[{d:'',a:''}],upi:'',note:''});
+let INV=null;
+const invTotal=v=>v.items.reduce((s,x)=>s+(parseFloat(x.a)||0),0);
+function itemsH(){return INV.items.map((x,i)=>'<div class="rowf" style="margin-bottom:10px"><input class="inp" style="flex:2" data-i="item.d" data-n="'+i+'" value="'+esc(x.d)+'" placeholder="Kaam ka naam" aria-label="Kaam ka naam"><input class="inp" style="flex:1" data-i="item.a" data-n="'+i+'" value="'+esc(x.a)+'" type="number" inputmode="decimal" placeholder="Rs." aria-label="Amount">'+(INV.items.length>1?'<button class="icon-btn sm" data-a="inv-rm" data-n="'+i+'" aria-label="Item hatao">'+ic(I.x,16)+'</button>':'')+'</div>').join('')}
+function paperH(){const v=INV;return '<div class="ph"><span class="sora big">INVOICE</span><b style="color:#5B3FE0">'+esc(v.no)+'</b></div><div class="rule"></div>'+
+'<div><div class="lbl">FROM</div><div class="sora" style="font-weight:700">'+esc(v.from||'Tumhara naam')+'</div></div><div><div class="lbl">BILL TO</div><div class="sora" style="font-weight:700">'+esc(v.client||'Client ka naam')+'</div></div><div class="lbl">Date: '+esc(v.date)+'</div>'+
+v.items.map(x=>'<div class="li"><span>'+esc(x.d||'Kaam')+'</span><b>'+inr(x.a)+'</b></div>').join('')+
+'<div class="rule"></div><div class="li" style="align-items:center"><b>Total</b><span class="sora tot">'+inr(invTotal(v))+'</span></div>'+(v.upi?'<div class="lbl">UPI: '+esc(v.upi)+'</div>':'')+(v.note?'<div style="font-size:14px">'+esc(v.note)+'</div>':'')}
+function invoiceS(){if(!INV)INV=newInv();const v=INV;
+return topBar('Invoice')+'<div class="card">'+fld('Tumhara naam / brand','inv.from',v.from)+fld('Client ka naam','inv.client',v.client)+'<div class="row2">'+fld('Invoice no.','inv.no',v.no)+fld('Date','inv.date',v.date,'date')+'</div><div><div class="mute" style="margin-bottom:8px">Items</div><div id="items">'+itemsH()+'</div><button class="btn ghost sm" data-a="inv-add">+ Item jodo</button></div>'+fld('UPI ID (optional)','inv.upi',v.upi,'text','yourname@upi')+fld('Note (optional)','inv.note',v.note)+'</div>'+
+'<div id="paper" class="paper">'+paperH()+'</div>'+
+'<button class="btn lime full" data-a="inv-wa">WhatsApp pe bhejo</button><div class="row2"><button class="btn ghost sm" data-a="inv-upi">UPI link copy</button><button class="btn ghost sm" data-a="inv-pdf">PDF / Print</button></div><button class="btn ghost full" data-a="inv-save">Invoice save karo</button>'}
+
+/* ---------- planner ---------- */
+const ST=['Idea','Script','Shoot','Edit','Ready','Posted'];
+const STC={Idea:['#7B5CFF','#fff'],Script:['#FF6A4D','#0E0D1A'],Shoot:['#C8F135','#0E0D1A'],Edit:['#25223F','#F4F3FF'],Ready:['#F4F3FF','#0E0D1A'],Posted:['transparent','#A9A6C8']};
+const PLAT=['YouTube','Reel','Shorts','Post','Other'];
+const DN=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+function weekDays(){const d=parseISO(S.pdate);const s=new Date(d);s.setDate(d.getDate()-((d.getDay()+6)%7));return Array.from({length:7},(_,i)=>{const x=new Date(s);x.setDate(s.getDate()+i);return x})}
+function plansH(){const l=db.plans.filter(p=>p.date===S.pdate).sort((a,b)=>(a.time||'99').localeCompare(b.time||'99'));
+if(!l.length)return '<div class="empty">Is din kuch plan nahi hai. Idea jodo se shuru karo.</div>';
+return l.map(p=>{const c=STC[p.status]||STC.Idea;return '<div class="plan"><div class="rowf" style="justify-content:space-between"><span class="tag" style="background:var(--surf2)">'+esc(p.platform)+'</span><span class="mute">'+esc(p.time||'')+'</span></div><div class="sora" style="font-weight:700;font-size:16px">'+esc(p.title)+'</div><div class="rowf" style="justify-content:space-between"><button class="tag" data-a="p-st" data-id="'+p.id+'" style="background:'+c[0]+';color:'+c[1]+';cursor:pointer;'+(p.status==='Posted'?'border:1px solid #39355C':'')+';min-height:34px" aria-label="Status badlo">'+p.status+'</button><button class="icon-btn sm" data-a="p-del" data-id="'+p.id+'" aria-label="Plan hatao">'+ic(I.trash,18)+'</button></div></div>'}).join('')}
+function plannerS(){const days=weekDays();const dt=parseISO(S.pdate);
+return topBar('Planner','<div class="mute" style="font-weight:700">'+dt.toLocaleString('en',{month:'short',year:'numeric'})+'</div>')+
+'<div class="rowf"><button class="icon-btn" data-a="p-wk" data-d="-7" aria-label="Pichla hafta">'+ic(I.left)+'</button><div class="days" style="flex:1">'+days.map((d,i)=>{const k=iso(d);return '<button class="day '+(k===S.pdate?'on':'')+'" data-a="p-day" data-d="'+k+'"><span>'+DN[i]+'</span><b>'+d.getDate()+'</b><i class="dot '+(db.plans.some(p=>p.date===k)?'':'off')+'"></i></button>'}).join('')+'</div><button class="icon-btn" data-a="p-wk" data-d="7" aria-label="Agla hafta">'+ic(I.chev)+'</button></div>'+
+'<div class="sora" style="font-weight:700;font-size:18px">'+(S.pdate===iso(new Date())?'Aaj ka plan':dt.toLocaleDateString('en',{weekday:'long',day:'numeric',month:'short'}))+'</div><div id="plist" style="display:flex;flex-direction:column;gap:12px">'+plansH()+'</div>'+
+(S.padd?'<div class="card">'+fld('Idea ka title','p.title','','text','Kya banana hai?')+'<div class="chips">'+PLAT.map(p=>'<button class="chip '+(S.pplat===p?'on':'')+'" data-a="p-plat" data-p="'+p+'">'+p+'</button>').join('')+'</div>'+fld('Time (optional)','p.time','','time')+'<div class="row2"><button class="btn ghost sm" data-a="p-cancel">Cancel</button><button class="btn lime sm" data-a="p-add">Add karo</button></div></div>':'<button class="btn lime full" data-a="p-new">'+ic(I.plus,18,3)+' Idea jodo</button>')}
+
+/* ---------- hooks ---------- */
+const HOOKS=['{t} ke baare me ye baat koi nahi batata.','Agar tum {t} kar rahe ho, to ye galti mat karna.','{t} sikhna hai? Bas 30 second do.','Maine 30 din {t} try kiya. Ye hua.','{t} ka sabse bada jhooth ye hai.','Ruko! {t} shuru karne se pehle ye dekh lo.','{t} me 90% log yahin atak jaate hain.','Ye 3 cheezein {t} ko aasaan bana deti hain.','Kaash mujhe {t} ke baare me ye pehle pata hota.','{t} ka ek trick jo mere kaam aaya.','Beginners ke liye {t}: bas itna karo.','{t} par log paise barbaad kar rahe hain. Aise bachao.','Kya {t} sach me kaam karta hai? Maine test kiya.','{t}: pehle vs ab.','Is ek galti ki wajah se tumhara {t} fail hota hai.','{t} ke liye mera simple 3-step plan.','Pehle 3 second me samjho: {t} kaise kaam karta hai.','Sab {t} ke baare me galat soch rahe hain.','{t} me shortcut chahiye? Ye lo.','Save kar lo: {t} ka poora checklist.'];
+const CAPS=['{t} par aaj ka ek simple tip. Save karo, baad me kaam aayega.','{t} me shuruaat karni hai? Comment me batao, agla video usi par.','Ye {t} wala tip kisi dost ko bhejo jo isme atka hai.','Roz thoda {t}. Fark 30 din me dikhega.','{t}: sach yahi hai. Aap kya sochte ho?','Follow karo, aise aur {t} tips ke liye.'];
+const NICHES={Fitness:['fitness','gymlife','workout','fitnessmotivation','healthylifestyle','fitindia'],Food:['foodie','foodreels','streetfood','recipe','homemade','indianfood'],Tech:['tech','techreels','gadgets','aitools','techtips','techindia'],Fashion:['fashion','ootd','styleinspo','fashionreels','outfitideas','streetwear'],Travel:['travel','travelreels','wanderlust','explore','travelindia','tripplan'],Education:['study','studytips','education','studymotivation','examprep','careertips'],Business:['business','entrepreneur','startup','sidehustle','marketing','freelancer'],Comedy:['comedy','funny','memes','relatable','comedyreels','desihumor']};
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+function genHooks(){const t=S.topic.trim();if(!t){toast('Pehle topic likho');return}
+S.hooks=shuffle(HOOKS).slice(0,10).map(x=>x.split('{t}').join(t));S.caps=shuffle(CAPS).slice(0,3).map(x=>x.split('{t}').join(t));
+const words=t.toLowerCase().replace(/[^a-z0-9\s]/g,'').split(/\s+/).filter(w=>w.length>2).map(w=>'#'+w);
+S.tags=[...new Set([...words,...NICHES[S.niche].map(x=>'#'+x),'#reels','#viral','#explorepage'])].join(' ');$('#hout').innerHTML=hoursOut()}
+const hoursOut=()=>{if(!S.hooks.length)return '<div class="empty">Topic likho aur Hooks banao dabao.</div>';
+const row=x=>'<div class="hook"><p>'+esc(x)+'</p><button class="icon-btn sm" data-a="copy" data-x="'+esc(x)+'" aria-label="Copy">'+ic(I.copy,18)+'</button></div>';
+return '<div class="sora" style="font-weight:700">Hooks</div>'+S.hooks.map(row).join('')+'<div class="sora" style="font-weight:700">Captions</div>'+S.caps.map(row).join('')+'<div class="sora" style="font-weight:700">Hashtags</div>'+row(S.tags)};
+function hooksS(){return topBar('Hook Writer')+'<div class="chips">'+Object.keys(NICHES).map(n=>'<button class="chip '+(S.niche===n?'on':'')+'" data-a="h-niche" data-n="'+n+'">'+n+'</button>').join('')+'</div>'+
+'<div class="card">'+fld('Topic','h.topic',S.topic,'text','Jaise: protein diet, reels editing')+'<button class="btn lime full" data-a="h-gen">Hooks banao</button></div><div id="hout" style="display:flex;flex-direction:column;gap:12px">'+hoursOut()+'</div>'}
+
+/* ---------- link in bio ---------- */
+const fixUrl=u=>/^(https?:|mailto:|tel:)/i.test(u)?u:'https://'+u;
+function bioHtml(){const b=db.bio;const a=/^#[0-9a-f]{6}$/i.test(b.accent)?b.accent:'#C8F135';
+const l=b.links.filter(x=>x.l&&x.u).map(x=>'<a href="'+esc(fixUrl(x.u))+'">'+esc(x.l)+'</a>').join('');
+return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(b.name||'My links')+'</title><style>body{margin:0;background:#0E0D1A;color:#F4F3FF;font-family:system-ui,sans-serif;min-height:100vh;display:flex;justify-content:center}main{width:100%;max-width:420px;padding:48px 20px;display:flex;flex-direction:column;gap:14px;align-items:stretch;text-align:center}h1{margin:0;font-size:28px}p{margin:0 0 12px;color:#A9A6C8}a{display:block;padding:16px;border-radius:30px;background:'+a+';color:#0E0D1A;font-weight:700;text-decoration:none}</style></head><body><main><h1>'+esc(b.name||'Tumhara naam')+'</h1><p>'+esc(b.tag||'Apni ek line likho')+'</p>'+l+'</main></body></html>'}
+function bioS(){const b=db.bio;
+return topBar('Link in Bio')+'<div class="card">'+fld('Naam','bio.name',b.name,'text','Tumhara naam')+fld('Ek line','bio.tag',b.tag,'text','Tum kya karte ho?')+
+'<div class="mute">Links</div><div id="blinks">'+bioLinksH()+'</div>'+(b.links.length<6?'<button class="btn ghost sm" data-a="bio-add">+ Link jodo</button>':'')+
+'<div class="mute">Button ka color</div><div class="chips">'+[...new Set(db.brand.colors.concat(['#C8F135','#FF6A4D','#7B5CFF']))].map(c=>'<button class="sw" aria-label="Color '+c+'" data-a="bio-col" data-c="'+c+'" style="background:'+c+'"></button>').join('')+'</div></div>'+
+'<iframe class="prev" id="bframe" title="Preview" sandbox></iframe><div class="row2"><button class="btn ghost sm" data-a="bio-copy">HTML copy</button><button class="btn lime sm" data-a="bio-dl">Download</button></div>'}
+const bioLinksH=()=>db.bio.links.map((x,i)=>'<div class="rowf" style="margin-bottom:10px"><input class="inp" style="flex:1" data-i="bl.l" data-n="'+i+'" value="'+esc(x.l)+'" placeholder="Naam" aria-label="Link naam"><input class="inp" style="flex:1.4" data-i="bl.u" data-n="'+i+'" value="'+esc(x.u)+'" placeholder="instagram.com/..." aria-label="Link URL">'+(db.bio.links.length>1?'<button class="icon-btn sm" data-a="bio-rm" data-n="'+i+'" aria-label="Link hatao">'+ic(I.x,16)+'</button>':'')+'</div>').join('');
+function bioPreview(){const f=$('#bframe');if(f)f.srcdoc=bioHtml()}
+
+/* ---------- thumbnail designer ---------- */
+const DF=[['Sora',"'Sora'"],['DM Sans',"'DM Sans'"],['Georgia','Georgia'],['Impact','Impact']];
+const fcss=n=>(DF.find(x=>x[0]===n)||DF[0])[1];
+const newDesign=()=>({id:uid(),w:1280,h:720,bg:db.brand.colors[2]||'#7B5CFF',sel:null,layers:[{id:uid(),t:'text',text:'APNA TITLE\nYAHAN',x:90,y:150,size:140,color:db.brand.colors[0]||'#C8F135',font:db.brand.font||'Sora',weight:800}]});
+let D=newDesign(),cv=null,ctx=null,drag=null;const imgs={};
+const fontOf=l=>(l.weight||800)+' '+l.size+'px '+fcss(l.font)+',system-ui,sans-serif';
+function getImg(l){if(!imgs[l.id]){const i=new Image();i.onload=()=>drawCv();i.src=l.src;imgs[l.id]=i}return imgs[l.id]}
+function bounds(l){if(l.t==='text'){ctx.font=fontOf(l);const ls=l.text.split('\n');return{x:l.x,y:l.y,w:Math.max.apply(null,ls.map(s=>ctx.measureText(s||' ').width)),h:ls.length*l.size*1.12}}return{x:l.x,y:l.y,w:l.w,h:l.h}}
+function drawCv(exp){if(!ctx)return;ctx.clearRect(0,0,D.w,D.h);ctx.fillStyle=D.bg;ctx.fillRect(0,0,D.w,D.h);
+D.layers.forEach(l=>{if(l.t==='text'){ctx.font=fontOf(l);ctx.fillStyle=l.color;ctx.textBaseline='top';l.text.split('\n').forEach((s,i)=>ctx.fillText(s,l.x,l.y+i*l.size*1.12))}
+else if(l.t==='rect'){ctx.fillStyle=l.color;ctx.beginPath();if(ctx.roundRect)ctx.roundRect(l.x,l.y,l.w,l.h,l.w*.06);else ctx.rect(l.x,l.y,l.w,l.h);ctx.fill()}
+else if(l.t==='circle'){ctx.fillStyle=l.color;ctx.beginPath();ctx.ellipse(l.x+l.w/2,l.y+l.h/2,l.w/2,l.h/2,0,0,Math.PI*2);ctx.fill()}
+else if(l.t==='img'){const im=getImg(l);if(im.complete&&im.naturalWidth)ctx.drawImage(im,l.x,l.y,l.w,l.h)}});
+if(!exp&&D.sel){const l=D.layers.find(x=>x.id===D.sel);if(l){const b=bounds(l);const lw=Math.max(3,D.w/260);ctx.lineWidth=lw+3;ctx.strokeStyle='#0E0D1A';ctx.strokeRect(b.x,b.y,b.w,b.h);ctx.lineWidth=lw;ctx.strokeStyle='#C8F135';ctx.strokeRect(b.x,b.y,b.w,b.h)}}}
+const swH=act=>'<div class="chips">'+[...new Set(db.brand.colors.concat(['#FFFFFF','#0E0D1A']).map(c=>c.toUpperCase()))].map(c=>'<button class="sw" aria-label="Color '+c+'" data-a="'+act+'" data-c="'+c+'" style="background:'+c+'"></button>').join('')+'</div>';
+function dPanel(){const l=D.layers.find(x=>x.id===D.sel);
+if(!l)return '<div class="sora" style="font-weight:700">Background</div>'+swH('d-bg')+'<div class="mute">Kisi cheez ko tap karke chuno, phir ungli se hilao.</div>';
+let h='';
+if(l.t==='text')h+='<label class="fld"><span>Text</span><textarea rows="2" data-i="d.text">'+esc(l.text)+'</textarea></label><div class="chips">'+DF.map(f=>'<button class="chip '+(l.font===f[0]?'on':'')+'" data-a="d-font" data-f="'+f[0]+'" style="font-family:'+f[1]+'">'+f[0]+'</button>').join('')+'</div><label class="fld"><span>Size</span><input type="range" min="20" max="400" value="'+l.size+'" data-i="d.size"></label>';
+else h+='<label class="fld"><span>Size</span><input type="range" min="40" max="'+Math.round(D.w*1.5)+'" value="'+Math.round(l.w)+'" data-i="d.size"></label>';
+if(l.t!=='img')h+=swH('d-color');
+h+='<div class="row2"><button class="btn ghost sm" data-a="d-front">Aage lao</button><button class="btn ghost sm" data-a="d-rm">Hatao</button></div>';return h}
+function designerS(){
+const P=[['YouTube 16:9',1280,720],['Reel 9:16',1080,1920],['Post 1:1',1080,1080]];
+return topBar('Thumbnail','<button class="btn coral sm" data-a="d-export">Export</button>')+
+'<div class="cvwrap"><canvas id="cv" aria-label="Design canvas"></canvas></div>'+
+'<div class="chips">'+P.map(p=>'<button class="chip '+(D.w===p[1]&&D.h===p[2]?'on':'')+'" data-a="d-size" data-w="'+p[1]+'" data-h="'+p[2]+'">'+p[0]+'</button>').join('')+'<button class="chip" data-a="d-new">Naya</button></div>'+
+'<div class="tray"><button class="hot" data-a="d-text">'+ic(I.text)+'Text</button><button data-a="d-photo">'+ic(I.img)+'Photo</button><button data-a="d-box">'+ic(I.box)+'Box</button><button data-a="d-circ">'+ic(I.circ)+'Circle</button><button data-a="d-logo">'+ic(I.drop)+'Logo</button></div>'+
+'<div class="card" id="dpanel">'+dPanel()+'</div><div class="row2"><button class="btn ghost" data-a="d-save">Save Draft</button><button class="btn lime" data-a="d-export">Export PNG</button></div>'}
+function initDesigner(){cv=$('#cv');cv.width=D.w;cv.height=D.h;ctx=cv.getContext('2d');drawCv();
+if(document.fonts&&document.fonts.load){Promise.all([document.fonts.load("800 40px Sora"),document.fonts.load("700 40px 'DM Sans'")]).then(drawCv).catch(()=>{})}
+const pt=e=>{const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)*D.w/r.width,y:(e.clientY-r.top)*D.h/r.height}};
+cv.addEventListener('pointerdown',e=>{const p=pt(e);const pd=D.w*.012;let hit=null;for(let i=D.layers.length-1;i>=0;i--){const l=D.layers[i],b=bounds(l);if(p.x>=b.x-pd&&p.x<=b.x+b.w+pd&&p.y>=b.y-pd&&p.y<=b.y+b.h+pd){hit=l;break}}
+D.sel=hit?hit.id:null;drag=hit?{l:hit,dx:p.x-hit.x,dy:p.y-hit.y}:null;if(hit)cv.setPointerCapture(e.pointerId);drawCv();$('#dpanel').innerHTML=dPanel()});
+cv.addEventListener('pointermove',e=>{if(!drag)return;const p=pt(e);drag.l.x=p.x-drag.dx;drag.l.y=p.y-drag.dy;drawCv()});
+const end=()=>{drag=null};cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end)}
+function addLayer(l){l.id=uid();D.layers.push(l);D.sel=l.id;drawCv();$('#dpanel').innerHTML=dPanel()}
+const brandC=i=>db.brand.colors[i%db.brand.colors.length];
+function snap(w){const t=document.createElement('canvas');const k=w/D.w;t.width=w;t.height=Math.round(D.h*k);t.getContext('2d').drawImage(cv,0,0,t.width,t.height);return t.toDataURL('image/jpeg',0.7)}
+
+/* ---------- firebase: login + marketplace ---------- */
+const FBCFG={apiKey:"AIzaSyCFSG8LLs7PwEijruLYcbL6SCaDKaW8Khs",authDomain:"kitfy-bb397.firebaseapp.com",projectId:"kitfy-bb397",storageBucket:"kitfy-bb397.firebasestorage.app",messagingSenderId:"444929811011",appId:"1:444929811011:web:113dccdd1c18eec56aaaf6"};
+const FBV='10.14.1';
+let FB=null,fbP=null,PF=null,PF_BUSY=false,VIEW=null;
+const AUTH={status:'loading',user:null,profile:null};
+const AU={mode:'login',email:'',pass:'',busy:false,err:''};
+const DS={q:'',role:'all',items:[],loaded:false,loading:false,err:''};
+const ROLES=[['editor','Editor','Video editing'],['designer','Graphic Designer','Poster, thumbnail'],['freelancer','Freelancer','Alag alag kaam'],['client','Client','Kaam dene wale']];
+const roleName=r=>(ROLES.find(x=>x[0]===r)||[0,'Member'])[1];
+const NOTE='Kitfy sirf logon ko milata hai. Paise ka lena-dena aapke beech hota hai, Kitfy guarantee nahi deta.';
+function loadScript(src){return new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=()=>no(new Error('script'));document.head.appendChild(s)})}
+function fbInit(){if(fbP)return fbP;
+fbP=(async()=>{const libs=[['app','initializeApp'],['auth','auth'],['firestore','firestore']];
+for(const l of libs){if(!(window.firebase&&window.firebase[l[1]]))await loadScript('https://www.gstatic.com/firebasejs/'+FBV+'/firebase-'+l[0]+'-compat.js')}
+if(!firebase.apps.length)firebase.initializeApp(FBCFG);
+const fs=firebase.firestore();try{fs.settings({experimentalAutoDetectLongPolling:true,merge:true})}catch(e){}
+FB={auth:firebase.auth(),fs:fs,ts:()=>firebase.firestore.FieldValue.serverTimestamp()};
+FB.auth.onAuthStateChanged(onAuth)})();
+fbP.catch(()=>{fbP=null;FB=null;AUTH.status='error';render()});
+return fbP}
+function afterAuth(){const R=S.route;if(AUTH.status==='ok'&&(R==='auth'||R==='setup')){S.route='home';history.replaceState({r:'home'},'')}render()}
+async function onAuth(u){AUTH.user=u;AUTH.profile=null;DS.loaded=false;DS.items=[];
+if(!u){AUTH.status='out';afterAuth();return}
+AUTH.status='loading';afterAuth();await loadProfile()}
+async function loadProfile(){AUTH.status='loading';
+try{const s=await FB.fs.collection('users').doc(AUTH.user.uid).get();AUTH.profile=s.exists?s.data():null;AUTH.status=s.exists?'ok':'setup'}catch(e){AUTH.status='error'}
+afterAuth()}
+function authErr(e){const m={'auth/invalid-email':'Email sahi nahi hai.','auth/email-already-in-use':'Ye email pehle se registered hai. Login karo.','auth/weak-password':'Password kam se kam 6 akshar ka rakho.','auth/invalid-credential':'Email ya password galat hai.','auth/user-not-found':'Ye email registered nahi hai.','auth/wrong-password':'Password galat hai.','auth/too-many-requests':'Bahut zyada try ho gaye. Thodi der baad try karo.','auth/network-request-failed':'Internet check karo.','auth/operation-not-allowed':'Email login Firebase me enable nahi hai.','auth/missing-password':'Password likho.','auth/user-disabled':'Ye account band hai.'};return m[(e&&e.code)||'']||'Kuch gadbad hui. Dobara try karo.'}
+const okEmail=e=>/^\S+@\S+\.\S+$/.test(e);
+const okPhoto=s=>typeof s==='string'&&s.length<60000&&/^data:image\/(jpeg|png);base64,[A-Za-z0-9+\/=]+$/.test(s);
+function avatarH(p,s){const n=(p.name||'').trim();if(okPhoto(p.photo))return '<img class="av" src="'+esc(p.photo)+'" alt="" width="'+s+'" height="'+s+'" style="width:'+s+'px;height:'+s+'px">';return '<span class="av" style="width:'+s+'px;height:'+s+'px;font-size:'+Math.round(s*.4)+'px">'+esc(Array.from(n||'?')[0].toUpperCase())+'</span>'}
+const cleanH=(s,re)=>String(s||'').trim().replace(/^(https?:\/\/)?(www\.)?(instagram\.com|t\.me|telegram\.me)\//i,'').split(/[\/?#]/)[0].replace(/^@/,'').replace(re,'');
+const cleanWa=s=>{let w=String(s||'').replace(/\D/g,'');if(w.length===10&&/^[6-9]/.test(w))w='91'+w;return w.slice(0,15)};
+const pfBlank=()=>({role:'',name:'',city:'',bio:'',instagram:'',telegram:'',whatsapp:'',photo:''});
+const pfFrom=p=>({role:p.role||'',name:p.name||'',city:p.city||'',bio:p.bio||'',instagram:p.instagram||'',telegram:p.telegram||'',whatsapp:p.whatsapp||'',photo:p.photo||''});
+function squarePhoto(file,size,cb){const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const c=document.createElement('canvas');c.width=c.height=size;const m=Math.min(im.width,im.height);c.getContext('2d').drawImage(im,(im.width-m)/2,(im.height-m)/2,m,m,0,0,size,size);let q=.8,u=c.toDataURL('image/jpeg',q);while(u.length>50000&&q>.3){q-=.1;u=c.toDataURL('image/jpeg',q)}cb(u)};im.onerror=()=>toast('Ye photo khul nahi payi');im.src=r.result};r.readAsDataURL(file)}
+
+/* auth screens */
+function accH(){const st=AUTH.status;
+if(st==='ok'&&AUTH.profile){const p=AUTH.profile;return '<button class="pcard" data-a="go" data-r="me">'+avatarH(p,44)+'<span class="tx"><b class="sora">Namaste, '+esc(String(p.name).split(' ')[0])+'</b><div class="mute">'+esc(roleName(p.role))+' · Profile dekho / edit karo</div></span>'+ic(I.chev,18)+'</button>'}
+if(st==='setup')return '<button class="pcard" data-a="go" data-r="setup"><span class="tx"><b class="sora">Profile poori karo</b><div class="mute">Role chuno aur naam likho</div></span>'+ic(I.chev,18)+'</button>';
+if(st==='loading')return '';
+return '<div class="hero" style="background:var(--violet);color:#fff"><div><div style="font-size:13px;font-weight:700">Kitfy Marketplace</div><h3 style="font-size:20px">Editors, designers aur clients se judo.</h3></div><button class="btn" data-a="go" data-r="auth" style="background:#fff;color:var(--ink)">Login / Signup</button></div>'}
+function waitS(){const e=AUTH.status==='error';
+return topBar('Kitfy')+(e?'<div class="card"><div class="err" role="alert">Internet ya server ki dikkat. Login ke liye internet chahiye.</div><button class="btn lime full" data-a="au-retry">Dobara try karo</button></div><button class="btn ghost full" data-a="go" data-r="home">Home pe jao</button>':'<div class="empty">Ek second...</div>')}
+function authS(){const su=AU.mode==='signup';
+return topBar(su?'Account banao':'Login')+'<div style="display:flex;justify-content:center">'+logo(64,'#C8F135','#0E0D1A')+'</div><div class="card">'+
+'<label class="fld"><span>Email</span><input data-i="au.email" type="email" autocomplete="email" inputmode="email" value="'+esc(AU.email)+'" placeholder="you@email.com"></label>'+
+'<label class="fld"><span>Password</span><input data-i="au.pass" type="password" autocomplete="'+(su?'new-password':'current-password')+'" value="'+esc(AU.pass)+'" placeholder="Kam se kam 6 akshar"></label>'+
+(AU.err?'<div class="err" role="alert">'+esc(AU.err)+'</div>':'')+
+'<button class="btn lime full" data-a="au-go"'+(AU.busy?' disabled':'')+'>'+(AU.busy?'Ek second...':su?'Account banao':'Login')+'</button>'+
+(su?'':'<button class="btn ghost sm full" data-a="au-reset">Password bhool gaye?</button>')+'</div>'+
+'<button class="btn ghost full" data-a="au-mode">'+(su?'Pehle se account hai? Login':'Naya ho? Account banao')+'</button>'+
+(su?'<div class="mute">'+NOTE+'</div>':'')}
+
+/* profile screens */
+function profileForm(){const f=PF;
+return '<div class="card"><div class="rowf" style="gap:16px">'+avatarH(f,88)+'<div style="display:flex;flex-direction:column;gap:8px"><button class="btn ghost sm" data-a="pf-photo">Photo chuno</button>'+(f.photo?'<button class="btn ghost sm" data-a="pf-rmphoto">Hatao</button>':'')+'</div></div></div>'+
+'<div class="card"><div class="mute">Tum kaun ho?</div><div class="grid2">'+ROLES.map(r=>'<button class="role '+(f.role===r[0]?'on':'')+'" data-a="pf-role" data-r="'+r[0]+'" aria-pressed="'+(f.role===r[0])+'">'+r[1]+'<small>'+r[2]+'</small></button>').join('')+'</div></div>'+
+'<div class="card">'+fld('Naam','pf.name',f.name,'text','Tumhara naam')+fld('Sheher (optional)','pf.city',f.city,'text','Jaise: Mumbai')+
+'<label class="fld"><span>Bio (optional)</span><textarea rows="3" maxlength="300" data-i="pf.bio" placeholder="Tum kya karte ho? Kitna experience hai?">'+esc(f.bio)+'</textarea></label>'+
+fld('Instagram (optional)','pf.instagram',f.instagram,'text','username')+fld('Telegram (optional)','pf.telegram',f.telegram,'text','username')+fld('WhatsApp (optional)','pf.whatsapp',f.whatsapp,'tel','10 digit number')+
+'<div class="mute">Ye profile Kitfy ke sab logged-in users ko dikhegi, WhatsApp number bhi. Sirf wahi do jo dikhana chahte ho.</div></div>'}
+function setupS(){if(!PF)PF=pfBlank();
+return '<div class="top"><h2>Profile banao</h2><button class="btn ghost sm" data-a="au-out">Logout</button></div><div class="mute">Pehle role chuno, phir naam likho. Baad me kabhi bhi badal sakte ho.</div>'+profileForm()+'<button class="btn lime full" data-a="pf-save">Profile banao</button>'}
+function meS(){if(!PF)PF=pfFrom(AUTH.profile||{});
+return '<div class="top"><h2 style="font-size:24px">Profile</h2></div>'+profileForm()+'<button class="btn lime full" data-a="pf-save">Save karo</button><button class="btn ghost full" data-a="au-out">Logout</button><div class="mute" style="text-align:center">'+esc((AUTH.user&&AUTH.user.email)||'')+'</div>'}
+function profileS(){const p=VIEW,l=[];
+if(p.instagram)l.push(['Instagram','https://instagram.com/'+encodeURIComponent(p.instagram)]);
+if(p.telegram)l.push(['Telegram','https://t.me/'+encodeURIComponent(p.telegram)]);
+if(p.whatsapp)l.push(['WhatsApp','https://wa.me/'+encodeURIComponent(p.whatsapp)]);
+return topBar('Profile')+'<div class="card" style="align-items:center;text-align:center">'+avatarH(p,96)+'<div class="sora" style="font-weight:800;font-size:22px">'+esc(p.name)+'</div><span class="tag" style="background:var(--lime);color:var(--ink)">'+esc(roleName(p.role))+'</span>'+(p.city?'<div class="mute">'+esc(p.city)+'</div>':'')+(p.bio?'<div style="font-size:15px;line-height:1.5;white-space:pre-wrap">'+esc(p.bio)+'</div>':'')+'</div>'+
+(l.length?'<div class="card"><div class="mute">Contact</div>'+l.map(x=>'<button class="btn ghost" data-a="url" data-u="'+esc(x[1])+'">'+x[0]+'</button>').join('')+'</div>':'<div class="empty">Is profile par abhi koi contact link nahi hai.</div>')+'<div class="mute" style="text-align:center">'+NOTE+'</div>'}
+
+/* discover */
+function dlistH(){if(DS.loading||(!DS.loaded&&!DS.err))return '<div class="empty">Dhundh rahe hain...</div>';
+if(DS.err)return '<div class="empty">'+esc(DS.err)+'</div>';
+const q=DS.q.trim().toLowerCase(),me=AUTH.user&&AUTH.user.uid;
+const l=DS.items.filter(p=>p.uid!==me).filter(p=>!q||((p.name||'')+' '+(p.city||'')+' '+(p.bio||'')+' '+roleName(p.role)).toLowerCase().includes(q));
+if(!l.length)return '<div class="empty">'+(DS.items.length>1||(DS.items.length===1&&DS.items[0].uid!==me)?'Is naam se koi nahi mila.':'Abhi koi aur profile nahi hai. Dost ko Kitfy bhejo!')+'</div>';
+return l.map(p=>'<button class="pcard" data-a="ds-open" data-id="'+esc(p.uid)+'">'+avatarH(p,52)+'<span class="tx"><b class="sora">'+esc(p.name)+'</b><div class="mute">'+esc(roleName(p.role))+(p.city?' · '+esc(p.city):'')+'</div>'+(p.bio?'<div class="bi">'+esc(p.bio)+'</div>':'')+'</span>'+ic(I.chev,18)+'</button>').join('')}
+function discoverS(){
+return '<div class="top"><h2 style="font-size:24px">Discover</h2><button class="icon-btn" data-a="ds-refresh" aria-label="Refresh">'+ic(I.refresh)+'</button></div>'+
+'<label class="search">'+ic(I.search,20)+'<input data-i="ds.q" type="text" placeholder="Naam, sheher ya skill..." aria-label="Profiles dhundo" value="'+esc(DS.q)+'"></label>'+
+'<div class="chips">'+[['all','Sab']].concat(ROLES.map(r=>[r[0],r[1]])).map(r=>'<button class="chip '+(DS.role===r[0]?'on':'')+'" data-a="ds-role" data-r="'+r[0]+'">'+r[1]+'</button>').join('')+'</div>'+
+'<div id="dlist" style="display:flex;flex-direction:column;gap:10px">'+dlistH()+'</div>'}
+async function loadDiscover(){if(DS.loading||!FB||AUTH.status!=='ok')return;
+const role=DS.role;DS.loading=true;DS.err='';let el=$('#dlist');if(el)el.innerHTML=dlistH();
+try{let q=FB.fs.collection('users');q=role==='all'?q.orderBy('updatedAt','desc'):q.where('role','==',role);
+const s=await q.limit(60).get();DS.items=s.docs.map(d=>d.data())}
+catch(e){DS.items=[];DS.err=e&&e.code==='permission-denied'?'Permission nahi mili. Firestore rules check karo.':'Load nahi hua. Internet check karo aur refresh dabao.'}
+DS.loaded=true;DS.loading=false;
+if(DS.role!==role&&S.route==='discover'){DS.loaded=false;return loadDiscover()}
+el=$('#dlist');if(el)el.innerHTML=dlistH()}
+
+/* ---------- events ---------- */
+const A={
+/* auth + profile + discover */
+'au-mode'(){AU.mode=AU.mode==='signup'?'login':'signup';AU.err='';render()},
+async 'au-go'(){if(AU.busy)return;const e=AU.email.trim(),p=AU.pass;
+if(!okEmail(e)){AU.err='Sahi email likho.';return render()}
+if(p.length<6){AU.err='Password kam se kam 6 akshar ka ho.';return render()}
+if(!FB){AU.err='Internet chahiye. Thodi der baad try karo.';fbInit();return render()}
+AU.busy=true;AU.err='';render();
+try{if(AU.mode==='signup')await FB.auth.createUserWithEmailAndPassword(e,p);else await FB.auth.signInWithEmailAndPassword(e,p);AU.pass=''}catch(x){AU.err=authErr(x)}
+AU.busy=false;render()},
+async 'au-reset'(){const e=AU.email.trim();if(!okEmail(e)){AU.err='Pehle upar apna email likho.';return render()}
+if(!FB){AU.err='Internet chahiye.';fbInit();return render()}
+try{await FB.auth.sendPasswordResetEmail(e);toast('Reset email bhej diya. Spam folder bhi dekho.')}catch(x){AU.err=authErr(x);render()}},
+'au-out'(){S.route='home';history.replaceState({r:'home'},'');PF=null;if(FB)FB.auth.signOut();toast('Logout ho gaya')},
+'au-retry'(){AUTH.status='loading';render();if(FB&&AUTH.user)loadProfile();else fbInit()},
+'pf-role'(el){if(!PF)return;PF.role=el.dataset.r;document.querySelectorAll('.role').forEach(b=>{const on=b===el;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on)})},
+'pf-photo'(){$('#avatarFile').click()},'pf-rmphoto'(){PF.photo='';render()},
+async 'pf-save'(){if(PF_BUSY||!PF)return;const f=PF,name=f.name.trim();
+if(!f.role)return toast('Pehle role chuno');
+if(name.length<2)return toast('Naam kam se kam 2 akshar ka likho');
+if(!FB||!AUTH.user)return toast('Internet chahiye');
+const d={uid:AUTH.user.uid,name:name.slice(0,50),role:f.role,bio:f.bio.trim().slice(0,300),city:f.city.trim().slice(0,40),instagram:cleanH(f.instagram,/[^A-Za-z0-9._]/g).slice(0,30),telegram:cleanH(f.telegram,/[^A-Za-z0-9_]/g).slice(0,32),whatsapp:cleanWa(f.whatsapp),photo:okPhoto(f.photo)?f.photo:'',updatedAt:FB.ts()};
+const isNew=AUTH.status==='setup';PF_BUSY=true;toast('Save ho raha hai...');
+try{const ref=FB.fs.collection('users').doc(AUTH.user.uid);if(isNew){d.createdAt=FB.ts();await ref.set(d)}else await ref.update(d);
+const s=await ref.get();AUTH.profile=s.data();AUTH.status='ok';PF=null;DS.loaded=false;toast('Profile save ho gayi');afterAuth()}
+catch(e){toast(e&&e.code==='permission-denied'?'Save nahi hua (permission). Rules check karo.':'Save nahi hua. Internet check karo.')}
+PF_BUSY=false},
+'ds-role'(el){DS.role=el.dataset.r;DS.loaded=false;DS.items=[];render()},
+'ds-refresh'(){DS.loaded=false;render()},
+'ds-open'(el){VIEW=DS.items.find(p=>p.uid===el.dataset.id)||null;if(VIEW)go('profile')},
+url(el){const u=el.dataset.u;if(/^https:\/\/(instagram\.com|t\.me|wa\.me)\//.test(u))window.open(u,'_blank')},
+back(){history.back()},
+go(el){go(el.dataset.r)},
+open(el){const o=$('.ov');if(o)o.remove();if(el.dataset.t==='invoice')INV=newInv();go(el.dataset.t)},
+sheet(){const o=document.createElement('div');o.className='ov';o.dataset.a='sheet-x';o.innerHTML='<div class="sh" data-a="noop"><div class="sora" style="font-weight:700;font-size:18px">Kya banana hai?</div><div class="grid2">'+TOOLS.map(tileH).join('')+'</div></div>';document.body.appendChild(o)},
+'sheet-x'(el,e){if(e.target===el)el.remove()},noop(){},
+copy(el){copyText(el.dataset.x)},
+/* brand */
+'b-addc'(){if(db.brand.colors.length>=8)return toast('Max 8 colors');db.brand.colors.push('#FFFFFF');save();render()},
+'b-rmc'(){if(db.brand.colors.length<=2)return toast('Kam se kam 2 colors rakho');db.brand.colors.pop();save();render()},
+'b-font'(el){db.brand.font=el.dataset.f;save();render()},
+'b-logo'(){$('#logoFile').click()},'b-rmlogo'(){db.brand.logo='';save();render()},
+/* invoice */
+'inv-add'(){INV.items.push({d:'',a:''});$('#items').innerHTML=itemsH()},
+'inv-rm'(el){INV.items.splice(+el.dataset.n,1);$('#items').innerHTML=itemsH();$('#paper').innerHTML=paperH()},
+'inv-save'(){const i=db.invoices.findIndex(x=>x.id===INV.id);const c=JSON.parse(JSON.stringify(INV));if(i>=0)db.invoices[i]=c;else{db.invoices.unshift(c);db.invN++}if(save())toast('Invoice save ho gaya')},
+'inv-open'(el){INV=JSON.parse(JSON.stringify(db.invoices.find(x=>x.id===el.dataset.id)));go('invoice')},
+'inv-del'(el){db.invoices=db.invoices.filter(x=>x.id!==el.dataset.id);save();render()},
+'inv-pdf'(){window.print()},
+'inv-upi'(){const v=INV,t=invTotal(v);if(!v.upi)return toast('Pehle UPI ID likho');copyText('upi://pay?pa='+encodeURIComponent(v.upi)+'&pn='+encodeURIComponent(v.from||'')+(t?'&am='+t:'')+'&cu=INR&tn='+encodeURIComponent('Invoice '+v.no))},
+'inv-wa'(){const v=INV;const t='Invoice '+v.no+'\n'+(v.from?v.from+' > ':'')+(v.client||'')+'\n'+v.items.filter(x=>x.d||x.a).map(x=>x.d+': '+inr(x.a)).join('\n')+'\nTotal: '+inr(invTotal(v))+(v.upi?'\nUPI: '+v.upi:'');window.open('https://wa.me/?text='+encodeURIComponent(t),'_blank')},
+/* planner */
+'p-day'(el){S.pdate=el.dataset.d;render()},
+'p-wk'(el){const d=parseISO(S.pdate);d.setDate(d.getDate()+(+el.dataset.d));S.pdate=iso(d);render()},
+'p-new'(){S.padd=true;render()},'p-cancel'(){S.padd=false;render()},
+'p-plat'(el){S.pplat=el.dataset.p;const t=($('[data-i="p.title"]')||{}).value,tm=($('[data-i="p.time"]')||{}).value;render();if(t)$('[data-i="p.title"]').value=t;if(tm)$('[data-i="p.time"]').value=tm},
+'p-add'(){const t=$('[data-i="p.title"]').value.trim();if(!t)return toast('Title likho');db.plans.push({id:uid(),title:t,platform:S.pplat,status:'Idea',date:S.pdate,time:$('[data-i="p.time"]').value});save();S.padd=false;render()},
+'p-st'(el){const p=db.plans.find(x=>x.id===el.dataset.id);p.status=ST[(ST.indexOf(p.status)+1)%ST.length];save();render()},
+'p-del'(el){db.plans=db.plans.filter(x=>x.id!==el.dataset.id);save();render()},
+/* hooks */
+'h-niche'(el){S.niche=el.dataset.n;const t=$('[data-i="h.topic"]').value;S.topic=t;render()},
+'h-gen'(){S.topic=$('[data-i="h.topic"]').value;genHooks()},
+/* bio */
+'bio-add'(){db.bio.links.push({l:'',u:''});save();$('#blinks').innerHTML=bioLinksH();render()},
+'bio-rm'(el){db.bio.links.splice(+el.dataset.n,1);save();render()},
+'bio-col'(el){db.bio.accent=el.dataset.c;save();bioPreview()},
+'bio-copy'(){copyText(bioHtml())},
+'bio-dl'(){download(new Blob([bioHtml()],{type:'text/html'}),'my-links.html')},
+/* designer */
+'d-text'(){addLayer({t:'text',text:'Naya text',x:D.w*.1,y:D.h*.4,size:Math.round(D.w/12),color:brandC(1),font:db.brand.font||'Sora',weight:800})},
+'d-box'(){addLayer({t:'rect',x:D.w*.1,y:D.h*.2,w:D.w*.3,h:D.w*.18,color:brandC(1)})},
+'d-circ'(){addLayer({t:'circle',x:D.w*.5,y:D.h*.2,w:D.w*.25,h:D.w*.25,color:brandC(1)})},
+'d-photo'(){$('#photoFile').click()},
+'d-logo'(){if(!db.brand.logo)return toast('Pehle Brand Kit me logo chuno');const im=new Image();im.onload=()=>{const w=D.w*.16;addLayer({t:'img',src:db.brand.logo,x:D.w*.05,y:D.h*.05,w:w,h:w*im.height/im.width})};im.src=db.brand.logo},
+'d-bg'(el){D.bg=el.dataset.c;drawCv()},
+'d-color'(el){const l=D.layers.find(x=>x.id===D.sel);if(l){l.color=el.dataset.c;drawCv()}},
+'d-font'(el){const l=D.layers.find(x=>x.id===D.sel);if(l){l.font=el.dataset.f;drawCv();$('#dpanel').innerHTML=dPanel()}},
+'d-front'(){const i=D.layers.findIndex(x=>x.id===D.sel);if(i>=0){D.layers.push(D.layers.splice(i,1)[0]);drawCv();toast('Sabse upar aa gaya')}},
+'d-rm'(){D.layers=D.layers.filter(x=>x.id!==D.sel);D.sel=null;drawCv();$('#dpanel').innerHTML=dPanel()},
+'d-size'(el){D.w=+el.dataset.w;D.h=+el.dataset.h;render()},
+'d-new'(){D=newDesign();render()},
+'d-export'(){const s=D.sel;D.sel=null;drawCv(true);cv.toBlob(b=>{if(b)download(b,'kitfy-thumbnail.png');D.sel=s;drawCv()},'image/png')},
+'d-save'(){const s=D.sel;D.sel=null;drawCv(true);const th=snap(360);D.sel=s;drawCv();const st={id:D.id,thumb:th,state:{w:D.w,h:D.h,bg:D.bg,layers:D.layers}};const i=db.designs.findIndex(x=>x.id===D.id);if(i>=0)db.designs[i]=st;else db.designs.unshift(st);db.designs=db.designs.slice(0,12);if(save())toast('Draft save ho gaya')},
+'d-load'(el){const d=db.designs.find(x=>x.id===el.dataset.id);D=Object.assign({id:d.id,sel:null},JSON.parse(JSON.stringify(d.state)));go('designer')},
+'d-del'(el){db.designs=db.designs.filter(x=>x.id!==el.dataset.id);save();render()}
+};
+document.addEventListener('click',e=>{const el=e.target.closest('[data-a]');if(!el)return;const f=A[el.dataset.a];if(f)f(el,e)});
+const IN={
+q(v){S.q=v;$('#grid').innerHTML=gridH()},
+'inv.from'(v){INV.from=v;$('#paper').innerHTML=paperH()},'inv.client'(v){INV.client=v;$('#paper').innerHTML=paperH()},'inv.no'(v){INV.no=v;$('#paper').innerHTML=paperH()},'inv.date'(v){INV.date=v;$('#paper').innerHTML=paperH()},'inv.upi'(v){INV.upi=v;$('#paper').innerHTML=paperH()},'inv.note'(v){INV.note=v;$('#paper').innerHTML=paperH()},
+'item.d'(v,el){INV.items[+el.dataset.n].d=v;$('#paper').innerHTML=paperH()},'item.a'(v,el){INV.items[+el.dataset.n].a=v;$('#paper').innerHTML=paperH()},
+'h.topic'(v){S.topic=v},
+'au.email'(v){AU.email=v},'au.pass'(v){AU.pass=v},
+'pf.name'(v){PF&&(PF.name=v)},'pf.city'(v){PF&&(PF.city=v)},'pf.bio'(v){PF&&(PF.bio=v)},'pf.instagram'(v){PF&&(PF.instagram=v)},'pf.telegram'(v){PF&&(PF.telegram=v)},'pf.whatsapp'(v){PF&&(PF.whatsapp=v)},
+'ds.q'(v){DS.q=v;const el=$('#dlist');if(el)el.innerHTML=dlistH()},
+'b.name'(v){db.brand.name=v;save();$('#bprev').innerHTML=brandPrev()},
+'b.color'(v,el){db.brand.colors[+el.dataset.n]=v.toUpperCase();save();$('#bprev').innerHTML=brandPrev()},
+'bio.name'(v){db.bio.name=v;save();bioPreview()},'bio.tag'(v){db.bio.tag=v;save();bioPreview()},
+'bl.l'(v,el){db.bio.links[+el.dataset.n].l=v;save();bioPreview()},'bl.u'(v,el){db.bio.links[+el.dataset.n].u=v;save();bioPreview()},
+'d.text'(v){const l=D.layers.find(x=>x.id===D.sel);if(l){l.text=v;drawCv()}},
+'d.size'(v){const l=D.layers.find(x=>x.id===D.sel);if(!l)return;if(l.t==='text')l.size=+v;else{const r=l.h/l.w;l.w=+v;l.h=+v*r}drawCv()}
+};
+document.addEventListener('input',e=>{const el=e.target;const k=el.dataset&&el.dataset.i;if(k&&IN[k])IN[k](el.value,el)});
+document.addEventListener('change',e=>{const el=e.target;const f=el.files&&el.files[0];if(!f)return;
+if(el.id==='photoFile'){resizeImage(f,1280,(src,w,h)=>{const k=D.w*.5/w;const l={t:'img',src:src,x:D.w*.25,y:D.h*.1,w:w*k,h:h*k};if(S.route==='designer')addLayer(l)});el.value=''}
+if(el.id==='logoFile'){resizeImage(f,512,src=>{db.brand.logo=src;save();render()});el.value=''}
+if(el.id==='avatarFile'){squarePhoto(f,200,src=>{if(PF){PF.photo=src;render()}});el.value=''}});
+document.addEventListener('keydown',e=>{const k=e.target.dataset&&e.target.dataset.i;if(e.key==='Enter'&&(k==='au.email'||k==='au.pass')){e.preventDefault();A['au-go']()}});
+render();
+fbInit();
+</script>
+</body>
+</html>
