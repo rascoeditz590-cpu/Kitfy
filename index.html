@@ -118,7 +118,7 @@ iframe.prev{width:100%;height:420px;border:0;border-radius:20px;background:#fff}
 .ab.a.err{color:var(--coral)}
 .ab img{display:block;max-width:100%;max-height:180px;border-radius:12px;margin-bottom:8px}
 .ab .fl{display:inline-block;font-size:12px;opacity:.75;margin-bottom:6px}
-.ab pre.aipre{margin:8px 0;padding:10px;border-radius:12px;background:var(--ink);overflow-x:auto;white-space:pre-wrap;font:13px/1.4 ui-monospace,monospace;color:var(--mist)}
+.ab img.gen,.ab video.gen{display:block;width:100%;max-height:60vh;object-fit:contain;border-radius:14px;margin-bottom:8px;background:var(--ink)}.ab a.dl{display:inline-block;margin-bottom:6px;font-size:13px;color:var(--lime);text-decoration:underline}.ab pre.aipre{margin:8px 0;padding:10px;border-radius:12px;background:var(--ink);overflow-x:auto;white-space:pre-wrap;font:13px/1.4 ui-monospace,monospace;color:var(--mist)}
 .ab code{background:var(--ink);padding:1px 6px;border-radius:6px;font-size:13px;color:var(--mist)}
 .aiact{align-self:flex-start;display:flex;gap:6px;align-items:center;margin-top:-6px}
 .aiact small{font-size:11px}
@@ -443,6 +443,7 @@ function legalS(){return topBar('Privacy and Terms')+'<div class="card legal"><b
 
 
 const AI_URL='https://square-darkness-0110.rascoeditz590.workers.dev';
+const AI_MEDIA_URL='https://kitfy-media.rascoeditz590.workers.dev'; /* set to your deployed kitfy-media Worker URL, e.g. https://kitfy-media.<you>.workers.dev */
 const AI_RULES=' Reply in plain text only: no markdown, no asterisks, no tables, no headings. Keep it short (under 150 words). Use the same language as the topic.';
 function stripMd(t){return String(t||'').replace(/\*\*|__|`/g,'').replace(/^#{1,6}\s*/gm,'').replace(/^\s*\|?\s*:?-{2,}.*$/gm,'').replace(/<br\s*\/?>/gi,' ').replace(/\s*\|\s*/g,' - ').replace(/^\s*[*]\s+/gm,'- ').replace(/\n{3,}/g,'\n\n').trim()}
 const AI_PROMPTS={script:'Write a short, punchy video script (about 30-45 seconds) with a strong hook, 3-5 quick points and a call to action about: ',titles:'Write 8 catchy video titles (under 70 characters each) about: ',description:'Write a short engaging video description with a call to action about: ',hashtags:'Give 15 relevant hashtags (mix of popular and niche) for: ',caption:'Write 5 short social media captions with emojis about: '};
@@ -644,7 +645,7 @@ if(el.id==='logoFile'){resizeImage(f,512,src=>{db.brand.logo=src;save();render()
 if(el.id==='avatarFile'){squarePhoto(f,200,src=>{if(PF){PF.photo=src;render()}});el.value=''}});
 document.addEventListener('keydown',e=>{const k=e.target.dataset&&e.target.dataset.i;if(e.key==='Enter'&&(k==='au.email'||k==='au.pass')){e.preventDefault();A['au-go']()}if(e.key==='Enter'&&k==='chat.text'){e.preventDefault();chatSend()}});
 /* ---------- Kitfy AI chat ---------- */
-const AIC={msgs:[],busy:false,mode:'chat',att:null,draft:'',opt:{ar:'9:16',q:'Standard',dur:10,style:'Cinematic'},pend:null,ctl:null,rec:null,loaded:null,sheet:false,attm:false,stopped:false};
+const AIC={msgs:[],busy:false,mode:'chat',att:null,draft:'',opt:{ar:'9:16',q:'Standard',dur:8,style:'Cinematic'},pend:null,ctl:null,rec:null,loaded:null,sheet:false,attm:false,stopped:false};
 const AIST_DEF={model:'auto',lang:'auto',len:'normal',speak:false,vlang:'hi-IN',about:''};
 let AIST=Object.assign({},AIST_DEF);
 const AIQ=30;
@@ -656,7 +657,7 @@ const aiErr=m=>{const e=new Error(m);e.srv=1;return e};
 function aiUid(){return (AUTH.user&&AUTH.user.uid)||'guest'}
 function aiLoad(){const u=aiUid();if(AIC.loaded===u)return;AIC.loaded=u;try{AIST=Object.assign({},AIST_DEF,JSON.parse(localStorage.getItem('kitfy:ai:set')||'{}'))}catch(e){}try{AIC.msgs=JSON.parse(localStorage.getItem('kitfy:ai:chat:'+u)||'[]')}catch(e){AIC.msgs=[]}}
 function aiSaveS(){try{localStorage.setItem('kitfy:ai:set',JSON.stringify(AIST))}catch(e){}}
-function aiSaveC(){try{localStorage.setItem('kitfy:ai:chat:'+aiUid(),JSON.stringify(AIC.msgs.filter(m=>!m.live).slice(-40).map(m=>({r:m.r,t:m.t,att:m.att,mode:m.mode,s:m.s,err:m.err}))))}catch(e){}}
+function aiSaveC(){try{localStorage.setItem('kitfy:ai:chat:'+aiUid(),JSON.stringify(AIC.msgs.filter(m=>!m.live).slice(-40).map(m=>({r:m.r,t:m.media?'['+m.media.kind+' was generated here - not saved after closing the app]':m.t,att:m.att,mode:m.mode,s:m.s,err:m.err}))))}catch(e){}}
 function aiCrGet(){try{const o=JSON.parse(localStorage.getItem('kitfy:ai:cr:'+aiUid())||'{}');return o.d===iso(new Date())?(o.n||0):0}catch(e){return 0}}
 function aiCrUse(n){try{localStorage.setItem('kitfy:ai:cr:'+aiUid(),JSON.stringify({d:iso(new Date()),n:Math.max(0,aiCrGet()+n)}))}catch(e){}}
 const aiLeft=()=>Math.max(0,AIQ-aiCrGet());
@@ -684,9 +685,9 @@ function aiBubU(m){return '<div class="ab u">'+(m.img?'<img src="'+m.img.url+'" 
 function aiDraw(){const el=$('#aiMsgs');if(!el)return;let h='';
 if(!AIC.msgs.length&&!AIC.pend)h='<div class="aiwel"><div class="aigl">'+ic(I.bolt,30,2.4)+'</div><h3>Hi! Main Kitfy AI hoon</h3><p class="mute">Script, hook, title, thumbnail aur video prompt me madad karta hoon. Photo ya file bhi bhej sakte ho.</p><div class="aisug">'+AISUG.map((s,i)=>'<button class="chip" data-a="ai-sug" data-n="'+i+'">'+esc(s[1])+'</button>').join('')+'</div></div>';
 AIC.msgs.forEach((m,i)=>{if(m.r==='u'){h+=aiBubU(m);return}
-const live=m.live;h+='<div class="ab a'+(m.err?' err':'')+'"'+(live?' id="aiLiveB"':'')+'>'+(m.t?aiMd(m.t):'<span class="dots"><span></span><span></span><span></span></span>')+(live&&m.t?'<span class="aicur"></span>':'')+'</div>';
+const live=m.live;h+='<div class="ab a'+(m.err?' err':'')+'"'+(live?' id="aiLiveB"':'')+'>'+(m.media?aiMediaHtml(m.media):'')+(m.t?aiMd(m.t):'<span class="dots"><span></span><span></span><span></span></span>')+(live&&m.t?'<span class="aicur"></span>':'')+'</div>';
 if(!live&&!m.err&&m.t)h+='<div class="aiact"><button class="icon-btn sm" data-a="ai-copym" data-n="'+i+'" aria-label="Copy">'+ic(I.copy,17)+'</button><button class="icon-btn sm" data-a="ai-speak" data-n="'+i+'" aria-label="Speak">'+ic(AII.spk,17)+'</button>'+(i===AIC.msgs.length-1&&!AIC.busy?'<button class="icon-btn sm" data-a="ai-regen" aria-label="Regenerate">'+ic(AII.re,17)+'</button>':'')+(m.model?'<small class="mute">'+esc(m.model)+'</small>':'')+'</div>'});
-if(AIC.pend){const p=AIC.pend,o=AIC.opt,md=p.um.mode,left=aiLeft();h+=aiBubU(p.um)+'<div class="aic"><b class="sora">Confirm karo</b><div>'+esc(aiModeName(md)+(md==='script'?'':' \u00b7 '+o.ar+' \u00b7 '+o.q+(md==='video'?' \u00b7 '+o.dur+'s':'')+' \u00b7 '+o.style))+'</div><div>Credits lagenge: <b class="sora">'+p.cost+'</b> <span class="mute">(aaj ke '+left+' me se '+Math.max(0,left-p.cost)+' bachenge)</span></div><div class="mute">Kitfy yahan prompt/script banata hai. Asli image ya video Google Flow jaise tool me banegi.</div><div class="rowf"><button class="btn ghost sm" style="flex:1" data-a="ai-edit">Edit</button><button class="btn lime sm" style="flex:1" data-a="ai-confirm">Confirm</button></div></div>'}
+if(AIC.pend){const p=AIC.pend,o=AIC.opt,md=p.um.mode,left=aiLeft();h+=aiBubU(p.um)+'<div class="aic"><b class="sora">Confirm karo</b><div>'+esc(aiModeName(md)+(md==='script'?'':' \u00b7 '+o.ar+' \u00b7 '+o.q+(md==='video'?' \u00b7 '+o.dur+'s':'')+' \u00b7 '+o.style))+'</div><div>Credits lagenge: <b class="sora">'+p.cost+'</b> <span class="mute">(aaj ke '+left+' me se '+Math.max(0,left-p.cost)+' bachenge)</span></div><div class="mute">'+(md==='script'?'Kitfy yahan script banata hai.':md==='image'?'Kitfy asli image banayega (Gemini). Kuch seconds lagte hain.':'Kitfy asli video banayega (Veo). 1-6 minute lag sakte hain, app khula rakho.')+'</div><div class="rowf"><button class="btn ghost sm" style="flex:1" data-a="ai-edit">Edit</button><button class="btn lime sm" style="flex:1" data-a="ai-confirm">Confirm</button></div></div>'}
 el.innerHTML=h;el.scrollTop=el.scrollHeight}
 function aiLive(am){const b=$('#aiLiveB'),el=$('#aiMsgs');if(!b||!el)return;const near=el.scrollHeight-el.scrollTop-el.clientHeight<160;b.innerHTML=aiMd(am.t)+'<span class="aicur"></span>';if(near)el.scrollTop=el.scrollHeight}
 function aiDrawOpts(){const el=$('#aiOpts');if(!el)return;const o=AIC.opt,m=AIC.mode;
@@ -694,7 +695,7 @@ const grp=(k,arr,cur)=>arr.map(v=>'<button class="chip '+(String(cur)===String(v
 let h='';
 if(AIC.att)h+='<div class="aiatt">'+(AIC.att.img?'<img src="'+AIC.att.url+'" alt="">':ic(I.doc,18))+'<span>'+esc(AIC.att.name)+'</span><button class="icon-btn sm" data-a="ai-attx" aria-label="Remove">'+ic(AII.x,16)+'</button></div>';
 if(AIC.attm)h+='<div class="chips"><button class="chip" data-a="ai-pick" data-t="img">Photo</button><button class="chip" data-a="ai-pick" data-t="file">File (txt, csv, srt)</button><button class="chip" data-a="ai-pick" data-t="link">Link</button><button class="chip" data-a="ai-pick" data-t="video">Video</button></div>';
-if(m==='image'||m==='video'){h+='<div class="chips">'+grp('ar',['9:16','16:9','1:1','4:5'],o.ar)+grp('q',['Standard','HD'],o.q)+'</div><div class="chips">'+(m==='video'?grp('dur',[5,8,10,15],o.dur):'')+grp('style',['Cinematic','Motion graphics','Realistic','Minimal'],o.style)+'</div>'}
+if(m==='image'||m==='video'){h+='<div class="chips">'+grp('ar',['9:16','16:9','1:1','4:5'],o.ar)+grp('q',['Standard','HD'],o.q)+'</div><div class="chips">'+(m==='video'?grp('dur',[4,6,8],o.dur):'')+grp('style',['Cinematic','Motion graphics','Realistic','Minimal'],o.style)+'</div>'}
 h+='<div class="chips">'+AIM.map(x=>'<button class="chip '+(m===x[0]?'on':'')+'" data-a="ai-mode" data-m="'+x[0]+'">'+x[1]+'</button>').join('')+'</div>';
 el.innerHTML=h}
 function aiDrawBtns(){const el=$('#aiBtns');if(!el)return;el.innerHTML='<button class="icon-btn '+(AIC.rec?'on':'')+'" data-a="ai-mic" aria-label="Voice typing">'+ic(AII.mic,22)+'</button>'+(AIC.busy?'<button class="icon-btn send" data-a="ai-stop" aria-label="Stop">'+ic(AII.stop,20,2.6)+'</button>':'<button class="icon-btn send" data-a="ai-send" aria-label="Send">'+ic(AII.send,22,2.6)+'</button>')}
@@ -708,8 +709,10 @@ if(!t&&!AIC.att){toast('Kuch likho ya attach karo');return}
 if(!AUTH.user){toast('Please log in first');return}
 if(!AI_URL){toast('Kitfy AI is not connected yet');return}
 const mode=AIC.mode,cost=aiCost();
+if(mode==='video'&&AIC.opt.ar!=='16:9'&&AIC.opt.ar!=='9:16'){toast('Video supports only 9:16 and 16:9');return}
+if((mode==='image'||mode==='video')&&!AI_MEDIA_URL){toast('Image/video backend is not connected yet (see REPORT.md)');return}
 if(aiLeft()<cost){toast('Aaj ke free credits kam hain ('+aiLeft()+'). Kal naye milenge.');return}
-const a=AIC.att;const um={r:'u',t:t||'(attachment)',mode:mode,att:a?a.name:'',attObj:a,img:a&&a.img?a:null,txt:a&&a.txt?a.txt:'',cost:cost};
+const a=AIC.att;const um={r:'u',t:t||'(attachment)',mode:mode,att:a?a.name:'',attObj:a,img:a&&a.img?a:null,txt:a&&a.txt?a.txt:'',cost:cost,opt:Object.assign({},AIC.opt)};
 um.s=aiUserText(um.t,mode);ta.value='';AIC.draft='';AIC.att=null;AIC.attm=false;aiGrow();aiDrawOpts();
 if(mode!=='chat'){AIC.pend={um:um,cost:cost};aiDraw();return}
 aiRun(um,cost)}
@@ -717,6 +720,7 @@ async function aiRun(um,cost,reuse){
 if(!reuse)AIC.msgs.push(um);
 const am={r:'a',t:'',live:true};AIC.msgs.push(am);aiCrUse(cost);AIC.busy=true;AIC.stopped=false;
 aiDraw();aiDrawBtns();aiDrawHead();
+if(um.mode==='image'||um.mode==='video')return aiMediaRun(um,am,cost);
 const hist=AIC.msgs.filter(m=>m!==am&&!m.err&&m.t).slice(-10);while(hist.length&&hist[0].r!=='u')hist.shift();
 const msgs=hist.map(m=>m.r==='u'?{role:'user',text:(m.s||m.t)+(m.txt?'\n\n[File: '+m.att+']\n'+m.txt:''),img:(m===um&&um.img)?{mime:um.img.mime,data:um.img.data}:undefined}:{role:'model',text:m.t});
 const last=msgs[msgs.length-1],flat=((last&&last.text)||'').slice(0,1900);
@@ -739,6 +743,44 @@ else if(!am.t){am.t=e&&e.srv?e.message:(tmo?'Kitfy AI took too long. Try a short
 am.live=false;AIC.busy=false;AIC.ctl=null;aiSaveC();
 if(S.route==='ai'){aiDraw();aiDrawBtns();aiDrawHead()}
 if(!am.err&&am.t&&AIST.speak)aiSpeak(am.t)}
+/* ---------- real image + video generation (via kitfy-media Worker; the API key stays on the server) ---------- */
+function aiMediaHtml(md){const u=esc(md.url);return (md.kind==='video'?'<video class="gen" controls playsinline preload="metadata" src="'+u+'"></video>':'<img class="gen" src="'+u+'" alt="Generated image">')+'<a class="dl" href="'+u+'" download="kitfy-'+md.kind+'.'+(md.kind==='video'?'mp4':(md.ext||'png'))+'">Download</a><br>'}
+async function aiMediaReq(path,opt,ac){const u=FB&&FB.auth&&FB.auth.currentUser;if(!u)throw aiErr('Please log in first');const tok=await u.getIdToken();
+const res=await fetch(AI_MEDIA_URL+path,Object.assign({signal:ac.signal},opt,{headers:Object.assign({Authorization:'Bearer '+tok},(opt&&opt.headers)||{})}));return res}
+async function aiMediaJson(path,opt,ac){let res;try{res=await aiMediaReq(path,opt,ac)}catch(e){if(e&&e.name==='AbortError')throw e;if(e&&e.srv)throw e;throw aiErr('Could not reach the Kitfy media server. Check your internet.')}
+let j=null;try{j=await res.json()}catch(e){}
+if(!res.ok||!j||j.error){const er=(j&&j.error)||{};throw aiErr(er.message||('Media server error ('+res.status+')'))}return j}
+const aiWait=(ms,ac)=>new Promise((ok,no)=>{const t=setTimeout(ok,ms);ac.signal.addEventListener('abort',()=>{clearTimeout(t);no(Object.assign(new Error('abort'),{name:'AbortError'}))},{once:true})});
+async function aiMediaRun(um,am,cost){
+const o=um.opt||AIC.opt,ac=new AbortController();AIC.ctl=ac;let started=false,timedOut=false;
+try{
+if(um.mode==='image'){
+am.t='Creating your image...';aiLive(am);
+const j=await aiMediaJson('/image',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:um.t,aspectRatio:o.ar,quality:o.q,style:o.style})},ac);
+if(!j.data)throw aiErr('No image was returned. Try again.');
+const mime=String(j.mime||'image/png');if(!/^image\/(png|jpeg|webp)$/.test(mime))throw aiErr('The server sent an unsupported image type.');
+am.media={kind:'image',url:'data:'+mime+';base64,'+j.data,ext:mime.split('/')[1].replace('jpeg','jpg')};am.t='Image ready \u00b7 '+o.ar;am.model=j.model||'';
+}else{
+am.t='Starting video...';aiLive(am);
+const s=await aiMediaJson('/video/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:um.t,aspectRatio:o.ar,quality:o.q,style:o.style,durationSeconds:o.dur})},ac);
+started=true;const op=encodeURIComponent(s.operation),t0=Date.now(),MAX=8*60*1000;let ready=false,fails=0;
+while(Date.now()-t0<MAX){
+await aiWait(10000,ac);
+try{const st=await aiMediaJson('/video/status?op='+op,{},ac);fails=0;if(st.done&&st.ready){ready=true;break}}
+catch(e){if(e&&e.name==='AbortError')throw e;if(e&&e.srv&&!/reach|Media server error \(5/.test(e.message))throw e;if(++fails>=3)throw e}
+am.t='Making your video... '+Math.round((Date.now()-t0)/1000)+'s (usually 1-6 min)';aiLive(am)}
+if(!ready){timedOut=true;throw aiErr('The video is taking too long. Please try again later.')}
+am.t='Downloading video...';aiLive(am);
+const fr=await aiMediaReq('/video/file?op='+op,{},ac);
+if(!fr.ok){let j=null;try{j=await fr.json()}catch(e){}throw aiErr((j&&j.error&&j.error.message)||'Could not download the video.')}
+const blob=await fr.blob();if(!blob||blob.size<1000||!/^video\//.test(blob.type||'video/mp4'))throw aiErr('The downloaded video was empty. Try again.');
+am.media={kind:'video',url:URL.createObjectURL(blob)};am.t='Video ready \u00b7 '+o.ar+' \u00b7 '+(s.durationSeconds||o.dur)+'s';am.model=s.model||'';
+}
+}catch(e){
+if(AIC.stopped){am.t='';am.media=null;if(!started)aiCrUse(-cost);AIC.msgs.splice(AIC.msgs.indexOf(am),1)}
+else{am.media=null;am.err=true;am.t=e&&e.srv?e.message:'Could not reach the Kitfy media server. Check your internet.';if(!(started&&timedOut))aiCrUse(-cost)}}
+am.live=false;AIC.busy=false;AIC.ctl=null;aiSaveC();
+if(S.route==='ai'){aiDraw();aiDrawBtns();aiDrawHead()}}
 function aiRegen(){if(AIC.busy)return;const i=AIC.msgs.length-1;if(i<1||AIC.msgs[i].r!=='a')return;const um=AIC.msgs[i-1];if(um.r!=='u')return;const cost=um.cost||1;if(aiLeft()<cost){toast('Credits kam hain');return}AIC.msgs.pop();aiRun(um,cost,true)}
 function aiMic(){const ta=$('#aiTa');const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 if(AIC.rec){try{AIC.rec.stop()}catch(e){}return}
