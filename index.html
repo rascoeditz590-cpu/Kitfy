@@ -716,11 +716,11 @@ const a=AIC.att;const um={r:'u',t:t||'(attachment)',mode:mode,att:a?a.name:'',at
 um.s=aiUserText(um.t,mode);ta.value='';AIC.draft='';AIC.att=null;AIC.attm=false;aiGrow();aiDrawOpts();
 if(mode!=='chat'){AIC.pend={um:um,cost:cost};aiDraw();return}
 aiRun(um,cost)}
-async function aiRun(um,cost,reuse){
+async function aiRun(um,cost,reuse,noMedia){
 if(!reuse)AIC.msgs.push(um);
 const am={r:'a',t:'',live:true};AIC.msgs.push(am);aiCrUse(cost);AIC.busy=true;AIC.stopped=false;
 aiDraw();aiDrawBtns();aiDrawHead();
-if(um.mode==='image'||um.mode==='video')return aiMediaRun(um,am,cost);
+if(!noMedia&&(um.mode==='image'||um.mode==='video'))return aiMediaRun(um,am,cost);
 const hist=AIC.msgs.filter(m=>m!==am&&!m.err&&m.t).slice(-10);while(hist.length&&hist[0].r!=='u')hist.shift();
 const msgs=hist.map(m=>m.r==='u'?{role:'user',text:(m.s||m.t)+(m.txt?'\n\n[File: '+m.att+']\n'+m.txt:''),img:(m===um&&um.img)?{mime:um.img.mime,data:um.img.data}:undefined}:{role:'model',text:m.t});
 const last=msgs[msgs.length-1],flat=((last&&last.text)||'').slice(0,1900);
@@ -749,8 +749,9 @@ async function aiMediaReq(path,opt,ac){const u=FB&&FB.auth&&FB.auth.currentUser;
 const res=await fetch(AI_MEDIA_URL+path,Object.assign({signal:ac.signal},opt,{headers:Object.assign({Authorization:'Bearer '+tok},(opt&&opt.headers)||{})}));return res}
 async function aiMediaJson(path,opt,ac){let res;try{res=await aiMediaReq(path,opt,ac)}catch(e){if(e&&e.name==='AbortError')throw e;if(e&&e.srv)throw e;throw aiErr('Could not reach the Kitfy media server. Check your internet.')}
 let j=null;try{j=await res.json()}catch(e){}
-if(!res.ok||!j||j.error){const er=(j&&j.error)||{};throw aiErr(er.message||('Media server error ('+res.status+')'))}return j}
+if(!res.ok||!j||j.error){const er=(j&&j.error)||{};const ex=aiErr(er.message||('Media server error ('+res.status+')'));ex.code=er.code||'';throw ex}return j}
 const aiWait=(ms,ac)=>new Promise((ok,no)=>{const t=setTimeout(ok,ms);ac.signal.addEventListener('abort',()=>{clearTimeout(t);no(Object.assign(new Error('abort'),{name:'AbortError'}))},{once:true})});
+const AI_FB=['QUOTA_EXHAUSTED','RATE_LIMITED','BILLING_REQUIRED','BILLING_OR_REGION','PERMISSION_DENIED','MODEL_UNAVAILABLE','DAILY_CAP'];
 async function aiMediaRun(um,am,cost){
 const o=um.opt||AIC.opt,ac=new AbortController();AIC.ctl=ac;let started=false,timedOut=false;
 try{
@@ -778,6 +779,7 @@ am.media={kind:'video',url:URL.createObjectURL(blob)};am.t='Video ready \u00b7 '
 }
 }catch(e){
 if(AIC.stopped){am.t='';am.media=null;if(!started)aiCrUse(-cost);AIC.msgs.splice(AIC.msgs.indexOf(am),1)}
+else if(!started&&e&&AI_FB.indexOf(e.code)>=0){AIC.msgs.splice(AIC.msgs.indexOf(am),1);aiCrUse(-cost);AIC.busy=false;AIC.ctl=null;toast('Google quota nahi hai. Free mode: prompt bana raha hoon');return aiRun(um,cost,true,true)}
 else{am.media=null;am.err=true;am.t=e&&e.srv?e.message:'Could not reach the Kitfy media server. Check your internet.';if(!(started&&timedOut))aiCrUse(-cost)}}
 am.live=false;AIC.busy=false;AIC.ctl=null;aiSaveC();
 if(S.route==='ai'){aiDraw();aiDrawBtns();aiDrawHead()}}
