@@ -661,7 +661,7 @@ function aiSaveC(){try{localStorage.setItem('kitfy:ai:chat:'+aiUid(),JSON.string
 function aiCrGet(){try{const o=JSON.parse(localStorage.getItem('kitfy:ai:cr:'+aiUid())||'{}');return o.d===iso(new Date())?(o.n||0):0}catch(e){return 0}}
 function aiCrUse(n){try{localStorage.setItem('kitfy:ai:cr:'+aiUid(),JSON.stringify({d:iso(new Date()),n:Math.max(0,aiCrGet()+n)}))}catch(e){}}
 const aiLeft=()=>Math.max(0,AIQ-aiCrGet());
-function aiCost(){const m=AIC.mode,o=AIC.opt;if(m==='chat')return 1;if(m==='script')return 2;let c=m==='image'?2:3;if(o.q==='HD')c+=1;if(m==='video'&&o.dur>=15)c+=1;return c}
+function aiCost(){const m=AIC.mode,o=AIC.opt;if(m==='chat'||m==='script')return 0;let c=m==='image'?2:3;if(o.q==='HD')c+=1;if(m==='video'&&o.dur>=15)c+=1;return c}
 const aiModeName=m=>(AIM.find(x=>x[0]===m)||AIM[0])[1];
 const aiLabel=()=>AIMODEL.find(x=>x[0]===AIST.model)[1]+' \u00b7 '+aiModeName(AIC.mode);
 function aiSystem(mode){
@@ -701,7 +701,7 @@ el.innerHTML=h}
 function aiDrawBtns(){const el=$('#aiBtns');if(!el)return;el.innerHTML='<button class="icon-btn '+(AIC.rec?'on':'')+'" data-a="ai-mic" aria-label="Voice typing">'+ic(AII.mic,22)+'</button>'+(AIC.busy?'<button class="icon-btn send" data-a="ai-stop" aria-label="Stop">'+ic(AII.stop,20,2.6)+'</button>':'<button class="icon-btn send" data-a="ai-send" aria-label="Send">'+ic(AII.send,22,2.6)+'</button>')}
 function aiDrawSheet(){const el=$('#aiSheet');if(!el)return;if(!AIC.sheet){el.innerHTML='';return}
 const g=(t,k,arr,cur)=>'<div><div class="mute" style="margin-bottom:8px">'+t+'</div><div class="chips" style="flex-wrap:wrap">'+arr.map(a=>'<button class="chip '+(cur===a[0]?'on':'')+'" data-a="ai-set" data-k="'+k+'" data-v="'+a[0]+'">'+a[1]+'</button>').join('')+'</div></div>';
-el.innerHTML='<div class="ov" data-a="ai-bg"><div class="aisheet"><div class="rowf" style="justify-content:space-between"><h2>Kitfy AI settings</h2><button class="icon-btn sm" data-a="ai-sheet" aria-label="Close">'+ic(AII.x,18)+'</button></div><div class="aicr"><b class="sora">'+aiLeft()+' / '+AIQ+'</b> free credits bache aaj ke<div class="mute" style="margin-top:4px">Chat 1, Script 2, Image 2, Video 3 (HD +1, 15s +1). Ye ginti sirf is phone par hai, asli billing nahi. Roz naye credits milte hain.</div></div>'+
+el.innerHTML='<div class="ov" data-a="ai-bg"><div class="aisheet"><div class="rowf" style="justify-content:space-between"><h2>Kitfy AI settings</h2><button class="icon-btn sm" data-a="ai-sheet" aria-label="Close">'+ic(AII.x,18)+'</button></div><div class="aicr"><b class="sora">'+aiLeft()+' / '+AIQ+'</b> free credits bache aaj ke<div class="mute" style="margin-top:4px">Chat 0, Script 0, Image 2, Video 3 (HD +1, 15s +1). Credits sirf successful image/video generation par lagenge. Ye ginti sirf is phone par hai, asli billing nahi.</div></div>'+
 g('AI model','model',AIMODEL,AIST.model)+g('Reply language','lang',[['auto','Auto'],['hinglish','Hinglish'],['english','English'],['hindi','Hindi']],AIST.lang)+g('Reply length','len',[['short','Short'],['normal','Normal'],['long','Detailed']],AIST.len)+g('Voice typing language','vlang',[['hi-IN','Hindi'],['en-IN','English (India)']],AIST.vlang)+g('Speak replies aloud','speak',[['on','On'],['off','Off']],AIST.speak?'on':'off')+
 '<label class="fld"><span>About me (AI ko yaad rahega)</span><textarea id="aiAbout" rows="3" maxlength="300" placeholder="e.g. Main video editor hoon, Hinglish me reels banata hoon">'+esc(AIST.about)+'</textarea></label><button class="btn ghost sm full" data-a="ai-clear">Chat delete karo</button></div></div>'}
 function aiSend(){if(AIC.busy)return;const ta=$('#aiTa'),t=(ta.value||'').trim();
@@ -714,13 +714,13 @@ if((mode==='image'||mode==='video')&&!AI_MEDIA_URL){toast('Image/video backend i
 if(aiLeft()<cost){toast('Aaj ke free credits kam hain ('+aiLeft()+'). Kal naye milenge.');return}
 const a=AIC.att;const um={r:'u',t:t||'(attachment)',mode:mode,att:a?a.name:'',attObj:a,img:a&&a.img?a:null,txt:a&&a.txt?a.txt:'',cost:cost,opt:Object.assign({},AIC.opt)};
 um.s=aiUserText(um.t,mode);ta.value='';AIC.draft='';AIC.att=null;AIC.attm=false;aiGrow();aiDrawOpts();
-if(mode!=='chat'){AIC.pend={um:um,cost:cost};aiDraw();return}
+if(mode==='image'||mode==='video'){AIC.pend={um:um,cost:cost};aiDraw();return}
 aiRun(um,cost)}
-async function aiRun(um,cost,reuse,noMedia){
+async function aiRun(um,cost,reuse){
 if(!reuse)AIC.msgs.push(um);
-const am={r:'a',t:'',live:true};AIC.msgs.push(am);aiCrUse(cost);AIC.busy=true;AIC.stopped=false;
+const am={r:'a',t:'',live:true};AIC.msgs.push(am);AIC.busy=true;AIC.stopped=false;
 aiDraw();aiDrawBtns();aiDrawHead();
-if(!noMedia&&(um.mode==='image'||um.mode==='video'))return aiMediaRun(um,am,cost);
+if(um.mode==='image'||um.mode==='video')return aiMediaRun(um,am,cost);
 const hist=AIC.msgs.filter(m=>m!==am&&!m.err&&m.t).slice(-10);while(hist.length&&hist[0].r!=='u')hist.shift();
 const msgs=hist.map(m=>m.r==='u'?{role:'user',text:(m.s||m.t)+(m.txt?'\n\n[File: '+m.att+']\n'+m.txt:''),img:(m===um&&um.img)?{mime:um.img.mime,data:um.img.data}:undefined}:{role:'model',text:m.t});
 const last=msgs[msgs.length-1],flat=((last&&last.text)||'').slice(0,1900);
@@ -738,8 +738,8 @@ if(!am.t)throw aiErr(er||'No result')
 const tx=await res.text();let j;try{j=JSON.parse(tx)}catch(e){throw aiErr('Kitfy AI sent an unreadable reply. Try again.')}
 am.t=String(j.text||'').trim();if(j.m)am.model=j.m;if(!am.t)throw aiErr(j.error||'No result')}
 }catch(e){clearTimeout(tm);
-if(AIC.stopped){if(!am.t){AIC.msgs.pop();aiCrUse(-cost)}}
-else if(!am.t){am.t=e&&e.srv?e.message:(tmo?'Kitfy AI took too long. Try a shorter message or try again later.':'Could not reach Kitfy AI. Check your internet.');am.err=true;aiCrUse(-cost)}}
+if(AIC.stopped){if(!am.t)AIC.msgs.pop()}
+else if(!am.t){am.t=e&&e.srv?e.message:(tmo?'Kitfy AI took too long. Try a shorter message or try again later.':'Could not reach Kitfy AI. Check your internet.');am.err=true}}
 am.live=false;AIC.busy=false;AIC.ctl=null;aiSaveC();
 if(S.route==='ai'){aiDraw();aiDrawBtns();aiDrawHead()}
 if(!am.err&&am.t&&AIST.speak)aiSpeak(am.t)}
@@ -749,9 +749,8 @@ async function aiMediaReq(path,opt,ac){const u=FB&&FB.auth&&FB.auth.currentUser;
 const res=await fetch(AI_MEDIA_URL+path,Object.assign({signal:ac.signal},opt,{headers:Object.assign({Authorization:'Bearer '+tok},(opt&&opt.headers)||{})}));return res}
 async function aiMediaJson(path,opt,ac){let res;try{res=await aiMediaReq(path,opt,ac)}catch(e){if(e&&e.name==='AbortError')throw e;if(e&&e.srv)throw e;throw aiErr('Could not reach the Kitfy media server. Check your internet.')}
 let j=null;try{j=await res.json()}catch(e){}
-if(!res.ok||!j||j.error){const er=(j&&j.error)||{};const ex=aiErr(er.message||('Media server error ('+res.status+')'));ex.code=er.code||'';throw ex}return j}
+if(!res.ok||!j||j.error){const er=(j&&j.error)||{};throw aiErr(er.message||('Media server error ('+res.status+')'))}return j}
 const aiWait=(ms,ac)=>new Promise((ok,no)=>{const t=setTimeout(ok,ms);ac.signal.addEventListener('abort',()=>{clearTimeout(t);no(Object.assign(new Error('abort'),{name:'AbortError'}))},{once:true})});
-const AI_FB=['QUOTA_EXHAUSTED','RATE_LIMITED','BILLING_REQUIRED','BILLING_OR_REGION','PERMISSION_DENIED','MODEL_UNAVAILABLE','DAILY_CAP'];
 async function aiMediaRun(um,am,cost){
 const o=um.opt||AIC.opt,ac=new AbortController();AIC.ctl=ac;let started=false,timedOut=false;
 try{
@@ -778,9 +777,9 @@ const blob=await fr.blob();if(!blob||blob.size<1000||!/^video\//.test(blob.type|
 am.media={kind:'video',url:URL.createObjectURL(blob)};am.t='Video ready \u00b7 '+o.ar+' \u00b7 '+(s.durationSeconds||o.dur)+'s';am.model=s.model||'';
 }
 }catch(e){
-if(AIC.stopped){am.t='';am.media=null;if(!started)aiCrUse(-cost);AIC.msgs.splice(AIC.msgs.indexOf(am),1)}
-else if(!started&&e&&AI_FB.indexOf(e.code)>=0){AIC.msgs.splice(AIC.msgs.indexOf(am),1);aiCrUse(-cost);AIC.busy=false;AIC.ctl=null;toast('Google quota nahi hai. Free mode: prompt bana raha hoon');return aiRun(um,cost,true,true)}
-else{am.media=null;am.err=true;am.t=e&&e.srv?e.message:'Could not reach the Kitfy media server. Check your internet.';if(!(started&&timedOut))aiCrUse(-cost)}}
+if(AIC.stopped){am.t='';am.media=null;AIC.msgs.splice(AIC.msgs.indexOf(am),1)}
+else{am.media=null;am.err=true;am.t=e&&e.srv?e.message:'Could not reach the Kitfy media server. Check your internet.'}}
+if(!am.err&&am.media)aiCrUse(cost);
 am.live=false;AIC.busy=false;AIC.ctl=null;aiSaveC();
 if(S.route==='ai'){aiDraw();aiDrawBtns();aiDrawHead()}}
 function aiRegen(){if(AIC.busy)return;const i=AIC.msgs.length-1;if(i<1||AIC.msgs[i].r!=='a')return;const um=AIC.msgs[i-1];if(um.r!=='u')return;const cost=um.cost||1;if(aiLeft()<cost){toast('Credits kam hain');return}AIC.msgs.pop();aiRun(um,cost,true)}
