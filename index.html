@@ -198,6 +198,8 @@ function resizeImage(file,max,cb){const r=new FileReader();r.onload=()=>{const i
 
 /* ---------- state + router ---------- */
 const S={q:'',route:'home',pdate:iso(new Date()),padd:false,pplat:'YouTube',niche:'Fitness',topic:'',hooks:[],caps:[],tags:''};
+const PRO={hours:3,level:'Intermediate',rush:'Normal',revisions:2,tools:300,goal:'Reels editing',topic:'',audience:'Instagram',deliverables:[],contract:{client:'',creator:'',project:'',amount:'',deadline:'7 days',revisions:'2',advance:'50',notes:''}};
+const DELIVER_ITEMS=['Final export checked','Correct aspect ratio / resolution','Captions and spelling checked','Music / assets usage checked','Thumbnail or cover included','Source project included (if agreed)','Client review link tested','Invoice / payment status checked'];
 const TOOLS=[
 {id:'designer',name:'Thumbnail',sub:'Poster and cover',bg:'var(--violet)',fg:'#fff',ic:'img'},
 {id:'invoice',name:'Invoice',sub:'With UPI link',bg:'var(--coral)',fg:'var(--ink)',ic:'doc'},
@@ -205,7 +207,12 @@ const TOOLS=[
 {id:'hooks',name:'Hook Writer',sub:'Hooks and captions',bg:'var(--coral)',fg:'var(--ink)',ic:'bolt'},
 {id:'brand',name:'Brand Kit',sub:'Colors, fonts, logo',bg:'var(--lime)',fg:'var(--ink)',ic:'drop'},
 {id:'ai',name:'Kitfy AI',sub:'Scripts, titles, tags',bg:'var(--violet)',fg:'#fff',ic:'bolt'},
-{id:'bio',name:'Link in Bio',sub:'Portfolio page',bg:'var(--violet)',fg:'#fff',ic:'link'}
+{id:'bio',name:'Link in Bio',sub:'Portfolio page',bg:'var(--violet)',fg:'#fff',ic:'link'},
+{id:'brief',name:'Client Brief',sub:'Project details and budget',bg:'var(--lime)',fg:'var(--ink)',ic:'doc'},
+{id:'rates',name:'Rate Calculator',sub:'Price projects fairly',bg:'var(--coral)',fg:'var(--ink)',ic:'calc'},
+{id:'contract',name:'Work Agreement',sub:'Scope and payment terms',bg:'var(--violet)',fg:'#fff',ic:'shield'},
+{id:'deliver',name:'Delivery Checklist',sub:'Track client handoff',bg:'var(--lime)',fg:'var(--ink)',ic:'check'},
+{id:'repurpose',name:'Content Repurposer',sub:'Turn one idea into formats',bg:'var(--coral)',fg:'var(--ink)',ic:'refresh'}
 ];
 function go(r,push=true){S.route=r;if(push)history.pushState({r:r},'');render()}
 history.replaceState({r:'home'},'');
@@ -227,7 +234,7 @@ return (R==='auth'||R==='setup')?'home':R}
 function render(){
 const R=guard(S.route);if(R!=='me'&&R!=='setup')PF=null;
 if(R==='ai'){aiMount();return}
-const S_={home:homeS,saved:savedS,designer:designerS,invoice:invoiceS,planner:plannerS,hooks:hooksS,brand:brandS,bio:bioS,auth:authS,setup:setupS,me:meS,discover:discoverS,profile:profileS,wait:waitS,chat:chatS,settings:settingsS,inbox:inboxS,verify:verifyS,legal:legalS,ai:aiS};
+const S_={home:homeS,saved:savedS,designer:designerS,invoice:invoiceS,planner:plannerS,hooks:hooksS,brand:brandS,bio:bioS,brief:briefS,rates:ratesS,contract:contractS,deliver:deliverS,repurpose:repurposeS,auth:authS,setup:setupS,me:meS,discover:discoverS,profile:profileS,wait:waitS,chat:chatS,settings:settingsS,inbox:inboxS,verify:verifyS,legal:legalS,ai:aiS};
 const withNav=R==='home'||R==='saved'||R==='discover'||R==='me';
 $('#app').innerHTML='<div class="scroll">'+S_[R]()+'</div>'+(withNav?nav(R):'');
 if(R==='designer')initDesigner();
@@ -244,6 +251,25 @@ function homeS(){return '<div class="top">'+logo(40,'#C8F135','#0E0D1A')+'<h2 st
 '<label class="search">'+ic(I.search,20)+'<input data-i="q" type="text" placeholder="Search tools..." aria-label="Search tools" value="'+esc(S.q)+'"></label>'+
 accH()+'<div class="hero"><div><div style="font-size:13px;font-weight:700">Task for today</div><h3>Make a thumbnail<br>in 2 minutes.</h3></div><button class="btn" data-a="open" data-t="designer">Get started</button></div>'+
 '<div class="sora" style="font-weight:700;font-size:18px">Your tools</div><div class="grid2" id="grid">'+gridH()+'</div>'}
+
+/* ---------- client project brief ---------- */
+let BR={type:'Instagram Reel',goal:'Grow reach',budget:'1500',deadline:'7 days',details:'',deliverables:'1 edited video',contact:''};
+function briefS(){return topBar('Client Brief')+'<div class="card"><div class="sora" style="font-weight:800;font-size:19px">Create a clear project request</div><div class="mute">Share these details with an editor or designer before agreeing on price.</div>'+
+'<label class="fld"><span>Project type</span><select data-i="br.type">'+['Instagram Reel','YouTube Video','Thumbnail Design','Graphic Design','Motion Graphics','Other'].map(x=>'<option '+(BR.type===x?'selected':'')+'>'+x+'</option>').join('')+'</select></label>'+
+'<label class="fld"><span>Main goal</span><select data-i="br.goal">'+['Grow reach','Promote a product','Educate audience','Personal brand','Event promotion','Other'].map(x=>'<option '+(BR.goal===x?'selected':'')+'>'+x+'</option>').join('')+'</select></label>'+
+'<label class="fld"><span>Budget (₹)</span><input data-i="br.budget" inputmode="numeric" maxlength="8" value="'+esc(BR.budget)+'" placeholder="Your total budget"></label>'+
+'<label class="fld"><span>Deadline</span><select data-i="br.deadline">'+['24 hours','3 days','7 days','14 days','Flexible'].map(x=>'<option '+(BR.deadline===x?'selected':'')+'>'+x+'</option>').join('')+'</select></label>'+
+'<label class="fld"><span>Deliverables</span><input data-i="br.deliverables" maxlength="180" value="'+esc(BR.deliverables)+'" placeholder="e.g. 1 video, captions, source file"></label>'+
+'<label class="fld"><span>Project details / reference links</span><textarea data-i="br.details" rows="4" maxlength="1200" placeholder="Describe style, duration, format, references, revisions...">'+esc(BR.details)+'</textarea></label>'+
+'<label class="fld"><span>Contact (optional)</span><input data-i="br.contact" maxlength="120" value="'+esc(BR.contact)+'" placeholder="Email or public profile link"></label>'+
+'<button class="btn lime full" data-a="br-copy">Copy project brief</button><div class="mute">This tool prepares a brief only. It does not publish a job or process payments.</div></div>'}
+
+
+/* ---------- creator business tools ---------- */
+function ratesS(){const base=Math.max(0,Number(PRO.hours)||0)*Math.max(0,Number(PRO.tools)||0)+({Beginner:250,Intermediate:600,Advanced:1200,Expert:2200}[PRO.level]||600)*Math.max(1,Number(PRO.hours)||1);const rush=PRO.rush==='24 hours'?1.6:PRO.rush==='48 hours'?1.3:1;const rev=1+Math.max(0,Number(PRO.revisions)||0)*.08;const total=Math.round(base*rush*rev);return topBar('Rate Calculator')+'<div class="hero"><div><div style="font-size:13px;font-weight:700">PRICE WITH CONFIDENCE</div><h3>Estimate your project fee.</h3></div><div class="mute" style="color:var(--ink)">An estimate only. Adjust it to your niche, complexity and local market.</div></div><div class="card"><label class="fld"><span>Service</span><select data-i="rate.goal">'+['Reels editing','YouTube editing','Thumbnail design','Motion graphics','Graphic design','AI-assisted content'].map(x=>'<option '+(PRO.goal===x?'selected':'')+'>'+x+'</option>').join('')+'</select></label><div class="row2"><label class="fld"><span>Estimated hours</span><input data-i="rate.hours" type="number" min="1" max="300" value="'+PRO.hours+'"></label><label class="fld"><span>Tool / asset cost (₹)</span><input data-i="rate.tools" type="number" min="0" value="'+PRO.tools+'"></label></div><label class="fld"><span>Experience level</span><select data-i="rate.level">'+['Beginner','Intermediate','Advanced','Expert'].map(x=>'<option '+(PRO.level===x?'selected':'')+'>'+x+'</option>').join('')+'</select></label><label class="fld"><span>Deadline</span><select data-i="rate.rush">'+['Normal','48 hours','24 hours'].map(x=>'<option '+(PRO.rush===x?'selected':'')+'>'+x+'</option>').join('')+'</select></label><label class="fld"><span>Included revisions</span><input data-i="rate.revisions" type="number" min="0" max="10" value="'+PRO.revisions+'"></label><div class="card" style="background:var(--lime);color:var(--ink)"><div class="mute" style="color:#353b1c">SUGGESTED STARTING ESTIMATE</div><div class="sora" style="font-size:34px;font-weight:800">₹'+total.toLocaleString('en-IN')+'</div><div style="font-size:12px">Formula-based estimate, not live market data or a guaranteed market rate.</div><button class="btn" data-a="rate-copy">Copy estimate</button></div></div>'}
+function contractS(){const c=PRO.contract;return topBar('Work Agreement')+'<div class="card"><div class="sora" style="font-weight:800;font-size:19px">Agree on the basics before work starts</div><div class="mute">Creates a discussion draft only, not legal advice or an e-signature.</div>'+fld('Client name','ct.client',c.client,'text','Client / business')+fld('Creator name','ct.creator',c.creator,'text','Your name / brand')+fld('Project','ct.project',c.project,'text','Reels edit, thumbnail, etc.')+fld('Total fee (₹)','ct.amount',c.amount,'number','Agreed amount')+'<div class="row2">'+fld('Deadline','ct.deadline',c.deadline,'text','7 days')+fld('Revisions','ct.revisions',c.revisions,'number','2')+'</div>'+fld('Advance percentage','ct.advance',c.advance,'number','50')+'<label class="fld"><span>Special terms</span><textarea rows="3" data-i="ct.notes" maxlength="600" placeholder="Source files, cancellation, usage rights...">'+esc(c.notes)+'</textarea></label><button class="btn lime full" data-a="contract-copy">Generate and copy draft</button></div>'}
+function deliverS(){const chosen=PRO.deliverables;return topBar('Delivery Checklist')+'<div class="hero"><div><div style="font-size:13px;font-weight:700">FINAL HANDOFF</div><h3>Make every delivery feel professional.</h3></div><div class="mute" style="color:var(--ink)">'+chosen.length+' of '+DELIVER_ITEMS.length+' checks complete</div></div><div class="card">'+DELIVER_ITEMS.map((x,i)=>'<label class="rowf" style="align-items:center;gap:12px;color:var(--mist)"><input type="checkbox" data-a="deliver-toggle" data-n="'+i+'" '+(chosen.includes(i)?'checked':'')+' style="width:22px;height:22px;accent-color:var(--lime)"><span>'+x+'</span></label>').join('')+'<button class="btn ghost full" data-a="deliver-reset">Reset checklist</button><button class="btn lime full" data-a="deliver-copy">Copy handoff checklist</button></div>'}
+function repurposeS(){return topBar('Content Repurposer')+'<div class="card"><div class="sora" style="font-weight:800;font-size:19px">One idea. Multiple content formats.</div><div class="mute">Creates a reusable planning draft offline; it does not call AI or publish posts.</div><label class="fld"><span>Core idea / topic</span><textarea rows="4" data-i="rp.topic" maxlength="700" placeholder="What is the main idea?">'+esc(PRO.topic)+'</textarea></label><label class="fld"><span>Primary audience</span><select data-i="rp.audience">'+['Instagram','YouTube','YouTube Shorts','LinkedIn','Facebook','Multiple platforms'].map(x=>'<option '+(PRO.audience===x?'selected':'')+'>'+x+'</option>').join('')+'</select></label><button class="btn lime full" data-a="repurpose-gen">Build content plan</button></div>'+(PRO.topic.trim()?'<div class="card"><div class="sora" style="font-weight:800">Content plan</div>'+[['Short Reel','Hook + one key lesson + CTA'],['Carousel','5-slide explanation: problem, 3 tips, summary'],['Story','Poll, behind-the-scenes, question sticker'],['Long video','Context, 3 sections, example, recap'],['Community post','Ask audience a focused question']].map(x=>'<div><b>'+x[0]+'</b><div class="mute">'+x[1]+'</div><div>'+esc(PRO.topic)+'</div></div>').join('')+'<button class="btn ghost full" data-a="repurpose-copy">Copy plan</button></div>':'')}
 
 /* ---------- saved ---------- */
 function savedS(){
@@ -414,8 +440,8 @@ const okPhoto=s=>typeof s==='string'&&s.length<60000&&/^data:image\/(jpeg|png);b
 function avatarH(p,s){const n=(p.name||'').trim();if(okPhoto(p.photo))return '<img class="av" src="'+esc(p.photo)+'" alt="" width="'+s+'" height="'+s+'" style="width:'+s+'px;height:'+s+'px">';return '<span class="av" style="width:'+s+'px;height:'+s+'px;font-size:'+Math.round(s*.4)+'px">'+esc(Array.from(n||'?')[0].toUpperCase())+'</span>'}
 const cleanH=(s,re)=>String(s||'').trim().replace(/^(https?:\/\/)?(www\.)?(instagram\.com|t\.me|telegram\.me)\//i,'').split(/[\/?#]/)[0].replace(/^@/,'').replace(re,'');
 const cleanWa=s=>{let w=String(s||'').replace(/\D/g,'');if(w.length===10&&/^[6-9]/.test(w))w='91'+w;return w.slice(0,15)};
-const pfBlank=()=>({role:'',name:'',city:'',bio:'',instagram:'',telegram:'',whatsapp:'',photo:'',portfolio:''});
-const pfFrom=p=>({role:p.role||'',name:p.name||'',city:p.city||'',bio:p.bio||'',instagram:p.instagram||'',telegram:p.telegram||'',whatsapp:p.whatsapp||'',photo:p.photo||'',portfolio:(p.portfolio||[]).join('\n')});
+const pfBlank=()=>({role:'',name:'',city:'',bio:'',skills:'',rate:'',availability:'available',instagram:'',telegram:'',whatsapp:'',photo:'',portfolio:''});
+const pfFrom=p=>({role:p.role||'',name:p.name||'',city:p.city||'',bio:p.bio||'',skills:p.skills||'',rate:p.rate||'',availability:p.availability||'available',instagram:p.instagram||'',telegram:p.telegram||'',whatsapp:p.whatsapp||'',photo:p.photo||'',portfolio:(p.portfolio||[]).join('\n')});
 function squarePhoto(file,size,cb){const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const c=document.createElement('canvas');c.width=c.height=size;const m=Math.min(im.width,im.height);c.getContext('2d').drawImage(im,(im.width-m)/2,(im.height-m)/2,m,m,0,0,size,size);let q=.8,u=c.toDataURL('image/jpeg',q);while(u.length>50000&&q>.3){q-=.1;u=c.toDataURL('image/jpeg',q)}cb(u)};im.onerror=()=>toast('This photo could not be opened');im.src=r.result};r.readAsDataURL(file)}
 
 
@@ -474,7 +500,7 @@ function profileForm(){const f=PF;
 return '<div class="card"><div class="rowf" style="gap:16px">'+avatarH(f,88)+'<div style="display:flex;flex-direction:column;gap:8px"><button class="btn ghost sm" data-a="pf-photo">Choose photo</button>'+(f.photo?'<button class="btn ghost sm" data-a="pf-rmphoto">Remove</button>':'')+'</div></div></div>'+
 '<div class="card"><div class="mute">Who are you?</div><div class="grid2">'+ROLES.map(r=>'<button class="role '+(f.role===r[0]?'on':'')+'" data-a="pf-role" data-r="'+r[0]+'" aria-pressed="'+(f.role===r[0])+'">'+r[1]+'<small>'+r[2]+'</small></button>').join('')+'</div></div>'+
 '<div class="card">'+fld('Name','pf.name',f.name,'text','Your name')+fld('City (optional)','pf.city',f.city,'text','e.g. Mumbai')+
-'<label class="fld"><span>Bio (optional)</span><textarea rows="3" maxlength="300" data-i="pf.bio" placeholder="What do you do? How much experience do you have?">'+esc(f.bio)+'</textarea></label><label class="fld"><span>Portfolio links (one per line, max 6)</span><textarea rows="4" data-i="pf.portfolio" placeholder="https://youtube.com/... or a Google Drive link">'+esc(f.portfolio)+'</textarea></label>'+
+'<label class="fld"><span>Bio (optional)</span><textarea rows="3" maxlength="300" data-i="pf.bio" placeholder="What do you do? How much experience do you have?">'+esc(f.bio)+'</textarea></label><label class="fld"><span>Skills (comma separated)</span><input data-i="pf.skills" maxlength="160" value="'+esc(f.skills||'')+'" placeholder="Reels, After Effects, thumbnails, color grading"></label><label class="fld"><span>Starting price (INR, optional)</span><input data-i="pf.rate" inputmode="numeric" maxlength="8" value="'+esc(f.rate||'')+'" placeholder="e.g. 500 per reel"></label><label class="fld"><span>Availability</span><select data-i="pf.availability"><option value="available" '+((f.availability||'available')==='available'?'selected':'')+'>Available for work</option><option value="busy" '+(f.availability==='busy'?'selected':'')+'>Currently busy</option></select></label><label class="fld"><span>Portfolio links (one per line, max 6)</span><textarea rows="4" data-i="pf.portfolio" placeholder="https://youtube.com/... or a Google Drive link">'+esc(f.portfolio)+'</textarea></label>'+
 fld('Instagram (optional)','pf.instagram',f.instagram,'text','username')+fld('Telegram (optional)','pf.telegram',f.telegram,'text','username')+fld('WhatsApp (optional)','pf.whatsapp',f.whatsapp,'tel','10 digit number')+
 '<div class="mute">This profile is visible to all logged-in Kitfy users, including your WhatsApp number. Share only what you want to show.</div></div>'}
 function setupS(){if(!PF)PF=pfBlank();
@@ -487,14 +513,14 @@ function profileS(){const p=VIEW,l=[];
 if(p.instagram)l.push(['Instagram','https://instagram.com/'+encodeURIComponent(p.instagram)]);
 if(p.telegram)l.push(['Telegram','https://t.me/'+encodeURIComponent(p.telegram)]);
 if(p.whatsapp)l.push(['WhatsApp','https://wa.me/'+encodeURIComponent(p.whatsapp)]);
-return topBar('Profile')+'<div class="card" style="align-items:center;text-align:center">'+avatarH(p,96)+'<div class="sora" style="font-weight:800;font-size:22px">'+esc(p.name)+'</div><span class="tag" style="background:var(--lime);color:var(--ink)">'+esc(roleName(p.role))+'</span>'+(p.city?'<div class="mute">'+esc(p.city)+'</div>':'')+(p.bio?'<div style="font-size:15px;line-height:1.5;white-space:pre-wrap">'+esc(p.bio)+'</div>':'')+'</div>'+
+return topBar('Profile')+'<div class="card" style="align-items:center;text-align:center">'+avatarH(p,96)+'<div class="sora" style="font-weight:800;font-size:22px">'+esc(p.name)+'</div><span class="tag" style="background:var(--lime);color:var(--ink)">'+esc(roleName(p.role))+'</span>'+(p.city?'<div class="mute">'+esc(p.city)+'</div>':'')+(p.bio?'<div style="font-size:15px;line-height:1.5;white-space:pre-wrap">'+esc(p.bio)+'</div>':'')+(p.skills?'<div class="chips">'+esc(p.skills).split(',').map(x=>x.trim()).filter(Boolean).slice(0,10).map(x=>'<span class="chip">'+esc(x)+'</span>').join('')+'</div>':'')+(p.rate?'<div class="tag">Starting at ₹'+esc(p.rate)+'</div>':'')+'<div class="mute">'+(p.availability==='busy'?'Currently busy':'Available for work')+'</div></div>'+
 portfolioH(p)+'<button class="btn lime full" data-a="chat-open">Message</button>'+(l.length?'<div class="card"><div class="mute">Contact</div>'+l.map(x=>'<button class="btn ghost" data-a="url" data-u="'+esc(x[1])+'">'+x[0]+'</button>').join('')+'</div>':'<div class="empty">No contact links on this profile yet.</div>')+'<div class="mute" style="text-align:center">'+NOTE+'</div>'}
 
 /* discover */
 function dlistH(){if(DS.loading||(!DS.loaded&&!DS.err))return '<div class="empty">Searching...</div>';
 if(DS.err)return '<div class="empty">'+esc(DS.err)+'</div>';
 const q=DS.q.trim().toLowerCase(),me=AUTH.user&&AUTH.user.uid;
-const l=DS.items.filter(p=>p.uid!==me).filter(p=>!q||((p.name||'')+' '+(p.city||'')+' '+(p.bio||'')+' '+roleName(p.role)).toLowerCase().includes(q));
+const l=DS.items.filter(p=>p.uid!==me).filter(p=>!q||((p.name||'')+' '+(p.city||'')+' '+(p.bio||'')+' '+(p.skills||'')+' '+roleName(p.role)).toLowerCase().includes(q));
 if(!l.length)return '<div class="empty">'+(DS.items.length>1||(DS.items.length===1&&DS.items[0].uid!==me)?'No one found with that name.':'No other profiles yet. Invite a friend to Kitfy!')+'</div>';
 return l.map(p=>'<button class="pcard" data-a="ds-open" data-id="'+esc(p.uid)+'">'+avatarH(p,52)+'<span class="tx"><b class="sora">'+esc(p.name)+'</b><div class="mute">'+esc(roleName(p.role))+(p.city?' · '+esc(p.city):'')+'</div>'+(p.bio?'<div class="bi">'+esc(p.bio)+'</div>':'')+'</span>'+ic(I.chev,18)+'</button>').join('')}
 function discoverS(){
@@ -544,7 +570,7 @@ async 'pf-save'(){if(PF_BUSY||!PF)return;const f=PF,name=f.name.trim();
 if(!f.role)return toast('Choose a role first');
 if(name.length<2)return toast('Name must be at least 2 characters');
 if(!FB||!AUTH.user)return toast('Internet required');
-const d={uid:AUTH.user.uid,name:name.slice(0,50),role:f.role,bio:f.bio.trim().slice(0,300),city:f.city.trim().slice(0,40),instagram:cleanH(f.instagram,/[^A-Za-z0-9._]/g).slice(0,30),telegram:cleanH(f.telegram,/[^A-Za-z0-9_]/g).slice(0,32),whatsapp:cleanWa(f.whatsapp),photo:okPhoto(f.photo)?f.photo:'',portfolio:(f.portfolio||'').split('\n').map(s=>s.trim()).filter(s=>/^https?:\/\//i.test(s)).slice(0,6).map(s=>s.slice(0,200)),updatedAt:FB.ts()};
+const d={uid:AUTH.user.uid,name:name.slice(0,50),role:f.role,bio:f.bio.trim().slice(0,300),skills:String(f.skills||'').split(',').map(x=>x.trim()).filter(Boolean).slice(0,10).join(', '),rate:String(f.rate||'').replace(/[^0-9]/g,'').slice(0,8),availability:f.availability==='busy'?'busy':'available',city:f.city.trim().slice(0,40),instagram:cleanH(f.instagram,/[^A-Za-z0-9._]/g).slice(0,30),telegram:cleanH(f.telegram,/[^A-Za-z0-9_]/g).slice(0,32),whatsapp:cleanWa(f.whatsapp),photo:okPhoto(f.photo)?f.photo:'',portfolio:(f.portfolio||'').split('\n').map(s=>s.trim()).filter(s=>/^https?:\/\//i.test(s)).slice(0,6).map(s=>s.slice(0,200)),updatedAt:FB.ts()};
 const isNew=AUTH.status==='setup';PF_BUSY=true;toast('Saving...');
 try{const ref=FB.fs.collection('users').doc(AUTH.user.uid);if(isNew){d.createdAt=FB.ts();await ref.set(d)}else await ref.update(d);
 const s=await ref.get();AUTH.profile=s.data();AUTH.status='ok';PF=null;DS.loaded=false;toast('Profile saved');afterAuth()}
@@ -560,6 +586,7 @@ open(el){const o=$('.ov');if(o)o.remove();if(el.dataset.t==='invoice')INV=newInv
 sheet(){const o=document.createElement('div');o.className='ov';o.dataset.a='sheet-x';o.innerHTML='<div class="sh" data-a="noop"><div class="sora" style="font-weight:700;font-size:18px">What do you want to create?</div><div class="grid2">'+TOOLS.map(tileH).join('')+'</div></div>';document.body.appendChild(o)},
 'sheet-x'(el,e){if(e.target===el)el.remove()},noop(){},
 copy(el){copyText(el.dataset.x)},
+'br-copy'(){const t='KITFY PROJECT BRIEF\nType: '+BR.type+'\nGoal: '+BR.goal+'\nBudget: ₹'+BR.budget+'\nDeadline: '+BR.deadline+'\nDeliverables: '+BR.deliverables+'\nDetails: '+BR.details+'\nContact: '+BR.contact+'\n\nPlease confirm scope, delivery date, revision count and payment terms before starting.';copyText(t);toast('Brief copied. Share it with your creator.')},
 /* brand */
 'b-addc'(){if(db.brand.colors.length>=8)return toast('Max 8 colors');db.brand.colors.push('#FFFFFF');save();render()},
 'b-rmc'(){if(db.brand.colors.length<=2)return toast('Keep at least 2 colors');db.brand.colors.pop();save();render()},
@@ -575,6 +602,9 @@ copy(el){copyText(el.dataset.x)},
 'inv-upi'(){const v=INV,t=invTotal(v);if(!v.upi)return toast('Enter a UPI ID first');copyText('upi://pay?pa='+encodeURIComponent(v.upi)+'&pn='+encodeURIComponent(v.from||'')+(t?'&am='+t:'')+'&cu=INR&tn='+encodeURIComponent('Invoice '+v.no))},
 'inv-wa'(){const v=INV;const t='Invoice '+v.no+'\n'+(v.from?v.from+' > ':'')+(v.client||'')+'\n'+v.items.filter(x=>x.d||x.a).map(x=>x.d+': '+inr(x.a)).join('\n')+'\nTotal: '+inr(invTotal(v))+(v.upi?'\nUPI: '+v.upi:'');window.open('https://wa.me/?text='+encodeURIComponent(t),'_blank')},
 /* planner */
+'rate-copy'(){const n=Math.max(0,Number(PRO.hours)||0)*Math.max(0,Number(PRO.tools)||0)+({Beginner:250,Intermediate:600,Advanced:1200,Expert:2200}[PRO.level]||600)*Math.max(1,Number(PRO.hours)||1);copyText('Kitfy project estimate\nService: '+PRO.goal+'\nEstimated fee: ₹'+Math.round(n*(PRO.rush==='24 hours'?1.6:PRO.rush==='48 hours'?1.3:1)*(1+Math.max(0,Number(PRO.revisions)||0)*.08)).toLocaleString('en-IN')+'\nEstimate only; confirm scope and terms with client.')},
+'contract-copy'(){const c=PRO.contract;copyText('PROJECT WORKING AGREEMENT — DRAFT\nClient: '+c.client+'\nCreator: '+c.creator+'\nProject: '+c.project+'\nFee: ₹'+c.amount+'\nDeadline: '+c.deadline+'\nIncluded revisions: '+c.revisions+'\nAdvance requested: '+c.advance+'%\nTerms: '+c.notes+'\n\nBefore starting, both parties should confirm deliverables, payment schedule, usage rights, cancellation/refund terms, feedback timeline and final acceptance in writing. This template is not legal advice.')},
+'deliver-reset'(){PRO.deliverables=[];render()},'deliver-copy'(){copyText('KITFY DELIVERY CHECKLIST\n'+DELIVER_ITEMS.map((x,i)=>(PRO.deliverables.includes(i)?'[x] ':'[ ] ')+x).join('\n'))},'repurpose-gen'(){PRO.topic=($('#app [data-i="rp.topic"]')||{}).value||PRO.topic;PRO.audience=($('#app [data-i="rp.audience"]')||{}).value||PRO.audience;render()},'repurpose-copy'(){copyText('CONTENT PLAN\nTopic: '+PRO.topic+'\nAudience: '+PRO.audience+'\n\nReel: Hook + one key lesson + CTA\nCarousel: problem, 3 tips, summary\nStories: poll + behind the scenes + question sticker\nLong video: context, 3 sections, example, recap\nCommunity post: ask one focused question')},
 'p-day'(el){S.pdate=el.dataset.d;render()},
 'p-wk'(el){const d=parseISO(S.pdate);d.setDate(d.getDate()+(+el.dataset.d));S.pdate=iso(d);render()},
 'p-new'(){S.padd=true;render()},'p-cancel'(){S.padd=false;render()},
@@ -616,7 +646,7 @@ q(v){S.q=v;$('#grid').innerHTML=gridH()},
 'item.d'(v,el){INV.items[+el.dataset.n].d=v;$('#paper').innerHTML=paperH()},'item.a'(v,el){INV.items[+el.dataset.n].a=v;$('#paper').innerHTML=paperH()},
 'h.topic'(v){S.topic=v},
 'chat.text'(v){if(CHAT)CHAT.text=v},'au.email'(v){AU.email=v},'au.pass'(v){AU.pass=v},
-'pf.name'(v){PF&&(PF.name=v)},'pf.city'(v){PF&&(PF.city=v)},'pf.bio'(v){PF&&(PF.bio=v)},'pf.portfolio'(v){PF&&(PF.portfolio=v)},'pf.instagram'(v){PF&&(PF.instagram=v)},'pf.telegram'(v){PF&&(PF.telegram=v)},'pf.whatsapp'(v){PF&&(PF.whatsapp=v)},
+'pf.name'(v){PF&&(PF.name=v)},'pf.city'(v){PF&&(PF.city=v)},'pf.bio'(v){PF&&(PF.bio=v)},'pf.skills'(v){PF&&(PF.skills=v)},'pf.rate'(v){PF&&(PF.rate=v.replace(/[^0-9]/g,'').slice(0,8))},'pf.availability'(v){PF&&(PF.availability=v)},'pf.portfolio'(v){PF&&(PF.portfolio=v)},'pf.instagram'(v){PF&&(PF.instagram=v)},'pf.telegram'(v){PF&&(PF.telegram=v)},'pf.whatsapp'(v){PF&&(PF.whatsapp=v)},
 'ds.q'(v){DS.q=v;const el=$('#dlist');if(el)el.innerHTML=dlistH()},
 'b.name'(v){db.brand.name=v;save();$('#bprev').innerHTML=brandPrev()},
 'b.color'(v,el){db.brand.colors[+el.dataset.n]=v.toUpperCase();save();$('#bprev').innerHTML=brandPrev()},
@@ -633,11 +663,12 @@ q(v){S.q=v;$('#grid').innerHTML=gridH()},
 'd.fb'(v){setF('b',v)},'d.fc'(v){setF('c',v)},'d.fs'(v){setF('s',v)},'d.fbl'(v){setF('bl',v)},
 'd-rmbg'(){const l=D.layers.find(x=>x.id===D.sel);if(l&&l.t==='img')rmBg(l)},
 'd.tol'(v){const l=D.layers.find(x=>x.id===D.sel);if(l)l.tol=+v},'d.cl'(v){setC('l',v)},'d.ct'(v){setC('t',v)},'d.cr'(v){setC('r',v)},'d.cb'(v){setC('b',v)},
-'ai.topic'(v){AIS.topic=v},'d.cbg'(v){D.bg=v;drawCv()},'d.ccol'(v){const l=D.layers.find(x=>x.id===D.sel);if(l){l.color=v;drawCv()}},
+'ai.topic'(v){AIS.topic=v},'br.type'(v){BR.type=v},'br.goal'(v){BR.goal=v},'br.budget'(v){BR.budget=v.replace(/[^0-9]/g,'').slice(0,8)},'br.deadline'(v){BR.deadline=v},'br.deliverables'(v){BR.deliverables=v},'br.details'(v){BR.details=v},'br.contact'(v){BR.contact=v},'rate.goal'(v){PRO.goal=v},'rate.hours'(v){PRO.hours=Math.max(1,Math.min(300,+v||1))},'rate.tools'(v){PRO.tools=Math.max(0,Math.min(1000000,+v||0))},'rate.level'(v){PRO.level=v},'rate.rush'(v){PRO.rush=v},'rate.revisions'(v){PRO.revisions=Math.max(0,Math.min(10,+v||0))},'ct.client'(v){PRO.contract.client=v},'ct.creator'(v){PRO.contract.creator=v},'ct.project'(v){PRO.contract.project=v},'ct.amount'(v){PRO.contract.amount=v.replace(/[^0-9]/g,'').slice(0,9)},'ct.deadline'(v){PRO.contract.deadline=v},'ct.revisions'(v){PRO.contract.revisions=v.replace(/[^0-9]/g,'').slice(0,2)},'ct.advance'(v){PRO.contract.advance=v.replace(/[^0-9]/g,'').slice(0,3)},'ct.notes'(v){PRO.contract.notes=v},'rp.topic'(v){PRO.topic=v},'rp.audience'(v){PRO.audience=v},'d.cbg'(v){D.bg=v;drawCv()},'d.ccol'(v){const l=D.layers.find(x=>x.id===D.sel);if(l){l.color=v;drawCv()}},
 'd.size'(v){const l=D.layers.find(x=>x.id===D.sel);if(!l)return;if(l.t==='text')l.size=+v;else{const r=l.h/l.w;l.w=+v;l.h=+v*r}drawCv()}
 };
 document.addEventListener('input',e=>{const el=e.target;const k=el.dataset&&el.dataset.i;if(k&&IN[k])IN[k](el.value,el)});
-document.addEventListener('change',e=>{const el=e.target;const f=el.files&&el.files[0];if(!f)return;
+document.addEventListener('change',e=>{const k=e.target&&e.target.dataset&&e.target.dataset.i;if(k&&k.startsWith('rate.')&&S.route==='rates')render()});
+document.addEventListener('change',e=>{const ck=e.target;if(ck&&ck.dataset&&ck.dataset.a==='deliver-toggle'){const n=+ck.dataset.n;PRO.deliverables=ck.checked?[...new Set([...PRO.deliverables,n])]:PRO.deliverables.filter(x=>x!==n);render();return}const el=e.target;const f=el.files&&el.files[0];if(!f)return;
 if(el.id==='photoFile'){resizeImage(f,1280,(src,w,h)=>{const k=D.w*.5/w;const l={t:'img',src:src,x:D.w*.25,y:D.h*.1,w:w*k,h:h*k};if(S.route==='designer')addLayer(l)});el.value=''}
 if(el.id==='chatFile'){chatUpload(f);el.value=''}
 if(el.id==='fontFile'){const nm=(f.name.replace(/\.[^.]+$/,'').replace(/[^A-Za-z0-9 _-]/g,'')||'Font').slice(0,30);f.arrayBuffer().then(b=>new FontFace(nm,b).load()).then(ff=>{document.fonts.add(ff);if(!DF.find(x=>x[0]===nm))DF.push([nm,"'"+nm+"'"]);const l=D.layers.find(x=>x.id===D.sel);if(l&&l.t==='text')l.font=nm;drawCv();const p=$('#dpanel');if(p)p.innerHTML=dPanel();toast('Font added: '+nm)}).catch(()=>toast('This font file could not be loaded'));el.value=''}
@@ -782,7 +813,7 @@ else{am.media=null;am.err=true;am.t=e&&e.srv?e.message:'Could not reach the Kitf
 if(!am.err&&am.media)aiCrUse(cost);
 am.live=false;AIC.busy=false;AIC.ctl=null;aiSaveC();
 if(S.route==='ai'){aiDraw();aiDrawBtns();aiDrawHead()}}
-function aiRegen(){if(AIC.busy)return;const i=AIC.msgs.length-1;if(i<1||AIC.msgs[i].r!=='a')return;const um=AIC.msgs[i-1];if(um.r!=='u')return;const cost=um.cost||1;if(aiLeft()<cost){toast('Credits kam hain');return}AIC.msgs.pop();aiRun(um,cost,true)}
+function aiRegen(){if(AIC.busy)return;const i=AIC.msgs.length-1;if(i<1||AIC.msgs[i].r!=='a')return;const um=AIC.msgs[i-1];if(um.r!=='u')return;const cost=Number.isFinite(um.cost)?um.cost:(um.mode==='image'?2:um.mode==='video'?3:0);if((um.mode==='image'||um.mode==='video')&&aiLeft()<cost){toast('Credits kam hain');return}AIC.msgs.pop();aiRun(um,cost,true)}
 function aiMic(){const ta=$('#aiTa');const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 if(AIC.rec){try{AIC.rec.stop()}catch(e){}return}
 if(!SR){toast('Is phone me voice typing nahi chali. Keyboard ke mic se bolo.');if(ta)ta.focus();return}
